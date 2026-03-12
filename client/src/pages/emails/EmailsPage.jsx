@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Mail, Send, Plus, Play, Pause, Trash2, Edit3, Save, X, Search,
   CheckCircle2, XCircle, Zap, FileText, History, Settings, Users,
   Clock, MailCheck, MailX, RefreshCw, ChevronDown, ChevronUp, Eye,
-  Calendar, Filter, UserCheck
+  Calendar, Filter, UserCheck, RotateCcw, Palette, Image, Globe, Share2
 } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
 import * as api from '../../lib/api.js';
@@ -960,47 +960,251 @@ function HistoryTab() {
 
 // ── Settings Tab ──
 function SettingsTab() {
-  const { data, loading, refetch } = useApi(useCallback(() => api.get('/emails/status'), []));
+  const { data: smtpData, loading: smtpLoading, refetch: smtpRefetch } = useApi(useCallback(() => api.get('/emails/status'), []));
+  const { data: brandData, loading: brandLoading } = useApi(useCallback(() => api.get('/emails/brand-settings'), []));
 
-  if (loading) {
+  const [form, setForm] = useState(null);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const debounceRef = useRef(null);
+
+  // Initialize form when brand data loads
+  useEffect(() => {
+    if (brandData && !form) {
+      setForm({ ...brandData });
+    }
+  }, [brandData, form]);
+
+  // Debounced preview update
+  useEffect(() => {
+    if (!form) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const sampleHtml = `<h2 style="margin:0 0 16px 0;font-size:22px;font-weight:700;">Welcome to ${form.companyName || 'Mentori'}!</h2>
+<p style="margin:0 0 12px 0;">This is a preview of your branded email template. All your campaigns will use this design.</p>
+<p style="margin:0 0 20px 0;">You can customize the colors, logo, footer text, and social links using the settings panel.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:${form.primaryColor || '#0086c0'};border-radius:8px;padding:12px 24px;"><a href="#" style="color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;font-family:'Inter',Arial,sans-serif;">Sample Button</a></td></tr></table>`;
+        const res = await api.post('/emails/preview-branded', { html: sampleHtml, settings: form });
+        setPreviewHtml(res.html);
+      } catch { /* ignore preview errors */ }
+    }, 500);
+    return () => clearTimeout(debounceRef.current);
+  }, [form]);
+
+  const updateField = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMsg('');
+    try {
+      await api.put('/emails/brand-settings', form);
+      setSaveMsg('Settings saved!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch {
+      setSaveMsg('Failed to save.');
+    }
+    setSaving(false);
+  };
+
+  const handleReset = async () => {
+    try {
+      const res = await api.get('/emails/brand-settings');
+      const defaults = {
+        primaryColor: '#0086c0', headerBgColor: '#1c1f3e', footerBgColor: '#f4f5f7',
+        bodyBgColor: '#f4f5f7', contentBgColor: '#ffffff', textColor: '#1c1f3e', mutedTextColor: '#6b7280',
+        logoUrl: '', logoAltText: 'Mentori', logoWidth: 140,
+        companyName: 'Mentori', websiteUrl: 'https://mentori.app',
+        footerText: '', copyrightText: '',
+        socialFacebook: '', socialTwitter: '', socialLinkedin: '', socialInstagram: '',
+        id: res.id, createdAt: res.createdAt,
+      };
+      setForm(defaults);
+      await api.put('/emails/brand-settings', defaults);
+      setSaveMsg('Reset to defaults!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch { /* ignore */ }
+  };
+
+  if (smtpLoading || brandLoading) {
     return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
+  const cardClass = 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6';
+
   return (
-    <div className="max-w-xl">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-            data?.connected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
-          }`}>
-            <Mail size={22} className={data?.connected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} />
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Left column — Settings forms */}
+      <div className="space-y-6">
+        {/* Email Service Connection */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+              smtpData?.connected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
+            }`}>
+              <Mail size={20} className={smtpData?.connected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Microsoft Graph API</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Sending as info@mentori.app</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Microsoft Graph API</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Sending as info@mentori.app</p>
+          <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+            {smtpData?.connected
+              ? <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-medium"><CheckCircle2 size={18} /> Connected — {smtpData.provider}</div>
+              : <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-medium"><XCircle size={18} /> Not connected</div>
+            }
           </div>
+          {!smtpData?.connected && smtpData?.error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-800 dark:text-red-300 mb-4">
+              <p className="font-medium mb-1">Error Details:</p>
+              <p className="text-xs font-mono break-all">{smtpData.error}</p>
+            </div>
+          )}
+          <button onClick={smtpRefetch} className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors">
+            <RefreshCw size={14} /> Test Connection
+          </button>
         </div>
 
-        <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
-          {data?.connected
-            ? <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-medium"><CheckCircle2 size={18} /> Connected — {data.provider}</div>
-            : <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-medium"><XCircle size={18} /> Not connected</div>
-          }
-        </div>
+        {form && (
+          <>
+            {/* Brand Colors */}
+            <div className={cardClass}>
+              <div className="flex items-center gap-2 mb-4">
+                <Palette size={18} className="text-gray-500 dark:text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Brand Colors</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  ['primaryColor', 'Primary / Accent'],
+                  ['headerBgColor', 'Header Background'],
+                  ['footerBgColor', 'Footer Background'],
+                  ['bodyBgColor', 'Body Background'],
+                  ['contentBgColor', 'Content Background'],
+                  ['textColor', 'Text Color'],
+                  ['mutedTextColor', 'Muted Text'],
+                ].map(([field, label]) => (
+                  <FormField key={field} label={label}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form[field] || '#000000'}
+                        onChange={e => updateField(field, e.target.value)}
+                        className="w-9 h-9 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer p-0.5"
+                      />
+                      <input
+                        type="text"
+                        value={form[field] || ''}
+                        onChange={e => updateField(field, e.target.value)}
+                        className={inputClass}
+                        placeholder="#000000"
+                      />
+                    </div>
+                  </FormField>
+                ))}
+              </div>
+            </div>
 
-        {!data?.connected && data?.error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-800 dark:text-red-300 mb-4">
-            <p className="font-medium mb-1">Error Details:</p>
-            <p className="text-xs font-mono break-all">{data.error}</p>
-          </div>
+            {/* Logo */}
+            <div className={cardClass}>
+              <div className="flex items-center gap-2 mb-4">
+                <Image size={18} className="text-gray-500 dark:text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Logo</h3>
+              </div>
+              <div className="space-y-4">
+                <FormField label="Logo Image URL">
+                  <input type="text" value={form.logoUrl || ''} onChange={e => updateField('logoUrl', e.target.value)} className={inputClass} placeholder="https://example.com/logo.png (leave empty for text logo)" />
+                </FormField>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label="Alt Text">
+                    <input type="text" value={form.logoAltText || ''} onChange={e => updateField('logoAltText', e.target.value)} className={inputClass} />
+                  </FormField>
+                  <FormField label="Width (px)">
+                    <input type="number" value={form.logoWidth || 140} onChange={e => updateField('logoWidth', parseInt(e.target.value, 10) || 140)} className={inputClass} />
+                  </FormField>
+                </div>
+              </div>
+            </div>
+
+            {/* Company & Footer */}
+            <div className={cardClass}>
+              <div className="flex items-center gap-2 mb-4">
+                <Globe size={18} className="text-gray-500 dark:text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Company & Footer</h3>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label="Company Name">
+                    <input type="text" value={form.companyName || ''} onChange={e => updateField('companyName', e.target.value)} className={inputClass} />
+                  </FormField>
+                  <FormField label="Website URL">
+                    <input type="text" value={form.websiteUrl || ''} onChange={e => updateField('websiteUrl', e.target.value)} className={inputClass} />
+                  </FormField>
+                </div>
+                <FormField label="Footer Text (optional extra line)">
+                  <input type="text" value={form.footerText || ''} onChange={e => updateField('footerText', e.target.value)} className={inputClass} placeholder="e.g. 123 Main Street, City, Country" />
+                </FormField>
+                <FormField label="Copyright Text (leave empty for default)">
+                  <input type="text" value={form.copyrightText || ''} onChange={e => updateField('copyrightText', e.target.value)} className={inputClass} placeholder={`© ${new Date().getFullYear()} ${form.companyName || 'Mentori'}. All rights reserved.`} />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Social Media */}
+            <div className={cardClass}>
+              <div className="flex items-center gap-2 mb-4">
+                <Share2 size={18} className="text-gray-500 dark:text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Social Media</h3>
+              </div>
+              <div className="space-y-4">
+                {[
+                  ['socialFacebook', 'Facebook URL'],
+                  ['socialTwitter', 'Twitter / X URL'],
+                  ['socialLinkedin', 'LinkedIn URL'],
+                  ['socialInstagram', 'Instagram URL'],
+                ].map(([field, label]) => (
+                  <FormField key={field} label={label}>
+                    <input type="text" value={form[field] || ''} onChange={e => updateField(field, e.target.value)} className={inputClass} placeholder="https://" />
+                  </FormField>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
+                <Save size={14} /> {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+              <button onClick={handleReset} className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium transition-colors">
+                <RotateCcw size={14} /> Reset to Defaults
+              </button>
+              {saveMsg && <span className="text-sm font-medium text-green-600 dark:text-green-400">{saveMsg}</span>}
+            </div>
+          </>
         )}
+      </div>
 
-        <button
-          onClick={refetch}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors"
-        >
-          <RefreshCw size={14} /> Test Connection
-        </button>
+      {/* Right column — Live Preview */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Eye size={18} className="text-gray-500 dark:text-gray-400" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Live Preview</h3>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden" style={{ height: '700px' }}>
+          {previewHtml ? (
+            <iframe
+              srcDoc={previewHtml}
+              title="Email Preview"
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-sm text-gray-400 dark:text-gray-500">Loading preview...</div>
+          )}
+        </div>
       </div>
     </div>
   );

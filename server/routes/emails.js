@@ -6,6 +6,17 @@ const campaignRepo = require('../dal/CampaignRepository');
 const templateRepo = require('../dal/EmailTemplateRepository');
 const { executeCampaign, scheduleCampaign, removeSchedule } = require('../services/campaignRunner');
 const { wrapInBrandedTemplate } = require('../templates/brandedEmail');
+const brandSettingsRepo = require('../dal/BrandSettingsRepository');
+
+// ── Brand Settings ──
+router.get('/brand-settings', (req, res) => {
+  res.json(brandSettingsRepo.get());
+});
+
+router.put('/brand-settings', (req, res) => {
+  const saved = brandSettingsRepo.save(req.body);
+  res.json(saved);
+});
 
 // ── SMTP Status ──
 router.get('/status', async (req, res, next) => {
@@ -89,11 +100,11 @@ router.delete('/templates/:id', (req, res) => {
 
 // ── Branded Email Preview ──
 router.post('/preview-branded', (req, res) => {
-  const { html } = req.body;
+  const { html, settings } = req.body;
   if (!html) {
     return res.status(400).json({ error: 'html is required' });
   }
-  const branded = wrapInBrandedTemplate(html);
+  const branded = wrapInBrandedTemplate(html, settings || null);
   res.json({ html: branded });
 });
 
