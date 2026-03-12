@@ -1,0 +1,20 @@
+:root {
+  --color-navy-800: #1c1f3e;
+  --color-navy-700: #252850;
+  --color-navy-600: #2e3260;
+  --color-surface: #f6f7fb;
+  --color-surface-card: #ffffff;
+  --color-success: #00c875;
+  --color-info: #0086c0;
+  --color-warning: #fdab3d;
+  --color-danger: #e2445c;
+  --color-purple: #a25ddc;
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 60px;
+  --radius: 8px;
+}
+
+.dark {
+  --color-surface: #0f1117;
+  --color-surface-card: #1a1d2e;
+}

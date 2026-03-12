@@ -1,0 +1,14 @@
+[
+  {
+    "id": "7baa0f2d-0385-4f02-8706-26bb2705b454",
+    "name": "תום בוקר ההומו",
+    "assigneeId": "tom",
+    "priority": "high",
+    "status": "in_progress",
+    "dueDate": "2026-03-14",
+    "description": "תתאפס על החיים שלך ",
+    "relatedDealId": "",
+    "createdAt": "2026-03-11T09:43:00.211Z",
+    "updatedAt": "2026-03-11T09:43:00.211Z"
+  }
+]
