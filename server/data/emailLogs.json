@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": "1820280a-88d6-47a8-9e36-0e602231a64a",
+    "messageId": "graph-1773322523900",
+    "to": "guytom98@gmil.com",
+    "subject": "תום בוקר ההומו",
+    "sentAt": "2026-03-12T13:35:23.900Z",
+    "status": "sent",
+    "campaignId": "6882d53b-9044-49ae-b08a-c9d4d9c5cf8d",
+    "campaignName": "בדיקה",
+    "type": "campaign",
+    "createdAt": "2026-03-12T13:35:23.900Z",
+    "updatedAt": "2026-03-12T13:35:23.900Z"
+  },
+  {
+    "id": "0841f03e-fb5c-487e-a77a-25bc61ff54e0",
+    "messageId": "graph-1773323239728",
+    "to": "galsasson101@gmail.com",
+    "subject": "תום בוקר ההומו",
+    "sentAt": "2026-03-12T13:47:19.728Z",
+    "status": "sent",
+    "campaignId": "37c9d278-e28c-4efc-8c39-1e1a7aa152d8",
+    "campaignName": "בידהק 4",
+    "type": "campaign",
+    "createdAt": "2026-03-12T13:47:19.728Z",
+    "updatedAt": "2026-03-12T13:47:19.728Z"
+  }
+]

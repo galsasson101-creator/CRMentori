@@ -32,6 +32,8 @@ const STATUS_COLORS = {
   active: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
   paused: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400' },
   completed: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
+  sending: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
+  failed: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
 };
 
 // ── Main Page ──
@@ -124,8 +126,8 @@ function CampaignsTab() {
 
   const handleRun = async (id) => {
     try {
-      const result = await api.post(`/emails/campaigns/${id}/run`);
-      alert(`Campaign executed: ${result.sent} sent, ${result.failed} failed`);
+      await api.post(`/emails/campaigns/${id}/run`);
+      alert('Campaign is being sent! Check the History tab for results.');
       refetch();
     } catch (err) {
       alert('Failed: ' + (err.message || 'Unknown error'));

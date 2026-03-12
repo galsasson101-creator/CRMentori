@@ -1,25 +1,25 @@
 [
   {
     "id": "05dd7ea9-5a6c-4f20-81db-0675b83ab09a",
-    "primaryColor": "#0086c0",
-    "headerBgColor": "#1c1f3e",
+    "primaryColor": "#c432e2",
+    "headerBgColor": "#ffffff",
     "footerBgColor": "#f4f5f7",
-    "bodyBgColor": "#f4f5f7",
+    "bodyBgColor": "#e3dafb",
     "contentBgColor": "#ffffff",
     "textColor": "#1c1f3e",
-    "mutedTextColor": "#6b7280",
-    "logoUrl": "",
+    "mutedTextColor": "#0e51d8",
+    "logoUrl": "https://literature-data.b-cdn.net/site-logo.svg",
     "logoAltText": "Mentori",
     "logoWidth": 140,
     "companyName": "Mentori",
     "websiteUrl": "https://mentori.app",
-    "footerText": "",
+    "footerText": "לומדים חכם, לא קשה",
     "copyrightText": "",
     "socialFacebook": "",
     "socialTwitter": "",
     "socialLinkedin": "",
-    "socialInstagram": "",
+    "socialInstagram": "Mentori.il",
     "createdAt": "2026-03-12T12:45:42.325Z",
-    "updatedAt": "2026-03-12T12:45:42.325Z"
+    "updatedAt": "2026-03-12T12:59:08.625Z"
   }
 ]
