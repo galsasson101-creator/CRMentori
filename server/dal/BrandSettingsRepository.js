@@ -24,6 +24,8 @@ const DEFAULTS = {
   socialTwitter: '',
   socialLinkedin: '',
   socialInstagram: '',
+  // App Store
+  appStoreUrl: '',
 };
 
 class BrandSettingsRepository extends BaseRepository {

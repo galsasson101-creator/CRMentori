@@ -3,7 +3,9 @@ import {
   Mail, Send, Plus, Play, Pause, Trash2, Edit3, Save, X, Search,
   CheckCircle2, XCircle, Zap, FileText, History, Settings, Users,
   Clock, MailCheck, MailX, RefreshCw, ChevronDown, ChevronUp, Eye,
-  Calendar, Filter, UserCheck, RotateCcw, Palette, Image, Globe, Share2
+  Calendar, Filter, UserCheck, RotateCcw, Palette, Image, Globe, Share2,
+  Smartphone, Type, List, Minus, MousePointerClick, Heading1, Heading2, Heading3,
+  AlignRight, Bold, ListOrdered, Code, Link, Copy, Check
 } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
 import * as api from '../../lib/api.js';
@@ -353,13 +355,13 @@ function CampaignForm({ campaign, onSave, onCancel }) {
   const handlePreview = async () => {
     try {
       const res = await api.post('/emails/preview-branded', {
-        html: form.htmlBody.replace(/\{\{name\}\}/g, 'John Doe'),
+        html: form.htmlBody.replace(/\{\{name\}\}/g, 'ישראל ישראלי'),
       });
       setPreviewHtml(res.html);
       setShowPreview(true);
     } catch {
       // Fallback to non-branded preview
-      setPreviewHtml(form.htmlBody.replace(/\{\{name\}\}/g, 'John Doe'));
+      setPreviewHtml(form.htmlBody.replace(/\{\{name\}\}/g, 'ישראל ישראלי'));
       setShowPreview(true);
     }
   };
@@ -445,9 +447,10 @@ function CampaignForm({ campaign, onSave, onCancel }) {
             )}
           </div>
         }>
-          <textarea rows={10} value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
-            placeholder={'<h1>Hello {{name}}</h1>\n<p>We have exciting news for you...</p>'}
-            className={`${inputClass} font-mono resize-y`} />
+          <HtmlBlockToolbar onInsert={(block) => setForm(f => ({ ...f, htmlBody: f.htmlBody + block }))} primaryColor={form.primaryColor || '#c432e2'} />
+          <textarea rows={12} value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
+            placeholder={'<h1>שלום {{name}}</h1>\n<p>יש לנו חדשות מרגשות בשבילך...</p>'}
+            className={`${inputClass} font-mono resize-y`} dir="ltr" />
         </FormField>
       </div>
 
@@ -960,6 +963,199 @@ function HistoryTab() {
   );
 }
 
+// ── HTML Block Toolbar — insert common email blocks ──
+const HTML_BLOCKS = [
+  { id: 'h1', label: 'H1', icon: Heading1, html: '<h1>כותרת ראשית</h1>\n' },
+  { id: 'h2', label: 'H2', icon: Heading2, html: '<h2>כותרת משנית</h2>\n' },
+  { id: 'h3', label: 'H3', icon: Heading3, html: '<h3>כותרת קטנה</h3>\n' },
+  { id: 'p', label: 'Paragraph', icon: AlignRight, html: '<p>טקסט פסקה כאן...</p>\n' },
+  { id: 'bold', label: 'Bold', icon: Bold, html: '<p><strong>טקסט מודגש</strong></p>\n' },
+  { id: 'ul', label: 'Bullet List', icon: List, html: '<ul>\n  <li>פריט ראשון</li>\n  <li>פריט שני</li>\n  <li>פריט שלישי</li>\n</ul>\n' },
+  { id: 'ol', label: 'Numbered List', icon: ListOrdered, html: '<ol>\n  <li>שלב ראשון</li>\n  <li>שלב שני</li>\n  <li>שלב שלישי</li>\n</ol>\n' },
+  { id: 'divider', label: 'Divider', icon: Minus, html: '<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />\n' },
+  { id: 'link', label: 'Link', icon: Link, html: '<p><a href="https://mentori.app" style="color:#c432e2;text-decoration:underline;">לחצו כאן</a></p>\n' },
+  { id: 'name', label: '{{name}}', icon: Type, html: '{{name}}' },
+];
+
+function HtmlBlockToolbar({ onInsert, primaryColor }) {
+  const [copiedId, setCopiedId] = useState(null);
+
+  const ctaBlock = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
+  <tr>
+    <td align="center" style="direction:rtl;text-align:center;">
+      <a href="https://mentori.app" target="_blank" style="display:inline-block;background-color:${primaryColor};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;line-height:1.2;">לחצו כאן</a>
+    </td>
+  </tr>
+</table>\n`;
+
+  const imageBlock = `<img src="https://via.placeholder.com/536x200" alt="תמונה" style="display:block;max-width:100%;height:auto;border-radius:8px;margin:0 0 16px 0;" />\n`;
+
+  const twoColBlock = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
+  <tr>
+    <td width="50%" style="padding:0 8px 0 0;direction:rtl;text-align:right;vertical-align:top;">
+      <h3>עמודה ימנית</h3>
+      <p>תוכן כאן...</p>
+    </td>
+    <td width="50%" style="padding:0 0 0 8px;direction:rtl;text-align:right;vertical-align:top;">
+      <h3>עמודה שמאלית</h3>
+      <p>תוכן כאן...</p>
+    </td>
+  </tr>
+</table>\n`;
+
+  const handleInsert = (id, html) => {
+    onInsert(html);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1200);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-gray-900/50 border border-b-0 border-gray-300 dark:border-gray-600 rounded-t-lg">
+      {HTML_BLOCKS.map(block => {
+        const Icon = block.icon;
+        return (
+          <button key={block.id} type="button" onClick={() => handleInsert(block.id, block.html)}
+            title={block.label}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+              copiedId === block.id
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}>
+            {copiedId === block.id ? <Check size={13} /> : <Icon size={13} />}
+            <span className="hidden sm:inline">{block.label}</span>
+          </button>
+        );
+      })}
+      <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1" />
+      <button type="button" onClick={() => handleInsert('cta', ctaBlock)}
+        title="CTA Button"
+        className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+          copiedId === 'cta'
+            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+            : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-800'
+        }`}>
+        {copiedId === 'cta' ? <Check size={13} /> : <MousePointerClick size={13} />}
+        <span className="hidden sm:inline">CTA Button</span>
+      </button>
+      <button type="button" onClick={() => handleInsert('image', imageBlock)}
+        title="Image Block"
+        className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+          copiedId === 'image'
+            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+        }`}>
+        {copiedId === 'image' ? <Check size={13} /> : <Image size={13} />}
+        <span className="hidden sm:inline">Image</span>
+      </button>
+      <button type="button" onClick={() => handleInsert('2col', twoColBlock)}
+        title="Two Columns"
+        className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+          copiedId === '2col'
+            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+        }`}>
+        {copiedId === '2col' ? <Check size={13} /> : <Code size={13} />}
+        <span className="hidden sm:inline">2-Col</span>
+      </button>
+    </div>
+  );
+}
+
+// ── Preview Content Templates for Settings ──
+const PREVIEW_TEMPLATES = [
+  {
+    id: 'welcome',
+    label: 'Welcome',
+    build: (s) => `<h1>ברוכים הבאים ל${s.companyName || 'Mentori'}! 🎓</h1>
+<p>שלום {{name}},</p>
+<p>אנחנו שמחים שהצטרפת אלינו. הנה כמה דברים שתוכלו לעשות:</p>
+<ul>
+  <li>לגשת לכל חומרי הלימוד</li>
+  <li>לתרגל עם מבחנים לדוגמה</li>
+  <li>לעקוב אחרי ההתקדמות שלכם</li>
+</ul>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+  <tr><td align="center" style="direction:rtl;text-align:center;">
+    <a href="${s.websiteUrl || '#'}" target="_blank" style="display:inline-block;background-color:${s.primaryColor || '#c432e2'};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;">התחילו ללמוד עכשיו</a>
+  </td></tr>
+</table>
+<p>בהצלחה בלימודים! 💪</p>`,
+  },
+  {
+    id: 'update',
+    label: 'Update',
+    build: (s) => `<h1>עדכון חשוב 📢</h1>
+<p>שלום {{name}},</p>
+<p>רצינו לעדכן אתכם על כמה שיפורים חדשים בפלטפורמה:</p>
+<h2>מה חדש?</h2>
+<ol>
+  <li><strong>תרגולים חדשים</strong> — הוספנו מאות שאלות חדשות במתמטיקה ואנגלית</li>
+  <li><strong>מעקב התקדמות משופר</strong> — עכשיו אפשר לראות סטטיסטיקות מפורטות</li>
+  <li><strong>למידה מותאמת אישית</strong> — המערכת מתאימה את הקושי ברמה שלכם</li>
+</ol>
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />
+<p>יש שאלות? אנחנו כאן בשבילכם.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+  <tr><td align="center" style="direction:rtl;text-align:center;">
+    <a href="${s.websiteUrl || '#'}" target="_blank" style="display:inline-block;background-color:${s.primaryColor || '#c432e2'};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;">כנסו לפלטפורמה</a>
+  </td></tr>
+</table>`,
+  },
+  {
+    id: 'promo',
+    label: 'Promo',
+    build: (s) => `<h1>🔥 מבצע מיוחד לתלמידי בגרות!</h1>
+<p>שלום {{name}},</p>
+<p>לכבוד תקופת הבגרויות, אנחנו מציעים <strong>30% הנחה</strong> על כל המנויים!</p>
+<h2>למה לשדרג?</h2>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
+  <tr>
+    <td width="50%" style="padding:0 8px 0 0;direction:rtl;text-align:right;vertical-align:top;">
+      <h3>🎯 חבילת בסיס</h3>
+      <p>גישה לכל החומרים<br/>תרגולים בסיסיים<br/>מעקב התקדמות</p>
+    </td>
+    <td width="50%" style="padding:0 0 0 8px;direction:rtl;text-align:right;vertical-align:top;">
+      <h3>⭐ חבילת פרו</h3>
+      <p>הכל בבסיס + <br/>שיעורים פרטיים<br/>מבחנים מלאים<br/>ליווי אישי</p>
+    </td>
+  </tr>
+</table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+  <tr><td align="center" style="direction:rtl;text-align:center;">
+    <a href="${s.websiteUrl || '#'}" target="_blank" style="display:inline-block;background-color:${s.primaryColor || '#c432e2'};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:18px;font-weight:700;text-decoration:none;text-align:center;padding:16px 40px;border-radius:8px;">לשדרוג עם 30% הנחה →</a>
+  </td></tr>
+</table>
+<p style="font-size:13px;color:#6b7280;">* המבצע בתוקף עד סוף החודש</p>`,
+  },
+  {
+    id: 'reminder',
+    label: 'Reminder',
+    build: (s) => `<h1>תזכורת: הבגרות מתקרבת! ⏰</h1>
+<p>שלום {{name}},</p>
+<p>רק רצינו להזכיר — עוד <strong>3 שבועות</strong> עד מועד הבגרות!</p>
+<p>הנה כמה טיפים להצלחה:</p>
+<ul>
+  <li>תרגלו לפחות 30 דקות כל יום</li>
+  <li>התמקדו בנושאים שעדיין מאתגרים</li>
+  <li>עשו מבחן מלא בתנאי אמת לפחות פעם בשבוע</li>
+  <li>אל תשכחו לנוח — שינה טובה חשובה ללמידה!</li>
+</ul>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
+  <tr><td align="center" style="direction:rtl;text-align:center;">
+    <a href="${s.websiteUrl || '#'}" target="_blank" style="display:inline-block;background-color:${s.primaryColor || '#c432e2'};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;">להתחיל לתרגל</a>
+  </td></tr>
+</table>
+<p>אנחנו מאמינים בכם! 🌟</p>`,
+  },
+  {
+    id: 'minimal',
+    label: 'Minimal',
+    build: (s) => `<p>שלום {{name}},</p>
+<p>תודה שאתם חלק מקהילת ${s.companyName || 'Mentori'}.</p>
+<p>בברכה,<br/>צוות ${s.companyName || 'Mentori'}</p>`,
+  },
+];
+
 // ── Settings Tab ──
 function SettingsTab() {
   const { data: smtpData, loading: smtpLoading, refetch: smtpRefetch } = useApi(useCallback(() => api.get('/emails/status'), []));
@@ -969,7 +1165,14 @@ function SettingsTab() {
   const [previewHtml, setPreviewHtml] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [previewTemplate, setPreviewTemplate] = useState('welcome');
+  const [previewDevice, setPreviewDevice] = useState('desktop');
+  const [expandedSections, setExpandedSections] = useState({
+    connection: true, colors: true, logo: true, company: true, social: true, appstore: false,
+  });
   const debounceRef = useRef(null);
+
+  const toggleSection = (key) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   // Initialize form when brand data loads
   useEffect(() => {
@@ -984,16 +1187,14 @@ function SettingsTab() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const sampleHtml = `<h2 style="margin:0 0 16px 0;font-size:22px;font-weight:700;">Welcome to ${form.companyName || 'Mentori'}!</h2>
-<p style="margin:0 0 12px 0;">This is a preview of your branded email template. All your campaigns will use this design.</p>
-<p style="margin:0 0 20px 0;">You can customize the colors, logo, footer text, and social links using the settings panel.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:${form.primaryColor || '#0086c0'};border-radius:8px;padding:12px 24px;"><a href="#" style="color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;font-family:'Inter',Arial,sans-serif;">Sample Button</a></td></tr></table>`;
+        const template = PREVIEW_TEMPLATES.find(t => t.id === previewTemplate) || PREVIEW_TEMPLATES[0];
+        const sampleHtml = template.build(form).replace(/\{\{name\}\}/g, 'ישראל');
         const res = await api.post('/emails/preview-branded', { html: sampleHtml, settings: form });
         setPreviewHtml(res.html);
       } catch { /* ignore preview errors */ }
     }, 500);
     return () => clearTimeout(debounceRef.current);
-  }, [form]);
+  }, [form, previewTemplate]);
 
   const updateField = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -1022,6 +1223,7 @@ function SettingsTab() {
         companyName: 'Mentori', websiteUrl: 'https://mentori.app',
         footerText: '', copyrightText: '',
         socialFacebook: '', socialTwitter: '', socialLinkedin: '', socialInstagram: '',
+        appStoreUrl: '',
         id: res.id, createdAt: res.createdAt,
       };
       setForm(defaults);
@@ -1035,25 +1237,34 @@ function SettingsTab() {
     return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const cardClass = 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6';
+  const cardClass = 'bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm';
+
+  const SectionCard = ({ id, icon: Icon, title, badge, children }) => {
+    const isOpen = expandedSections[id] !== false;
+    return (
+      <div className={cardClass}>
+        <button type="button" onClick={() => toggleSection(id)}
+          className="flex items-center justify-between w-full p-5 text-left">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <Icon size={16} className="text-gray-500 dark:text-gray-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+            {badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">{badge}</span>}
+          </div>
+          {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+        </button>
+        {isOpen && <div className="px-5 pb-5 pt-0">{children}</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
       {/* Left column — Settings forms */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Email Service Connection */}
-        <div className={cardClass}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-              smtpData?.connected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
-            }`}>
-              <Mail size={20} className={smtpData?.connected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Microsoft Graph API</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Sending as info@mentori.app</p>
-            </div>
-          </div>
+        <SectionCard id="connection" icon={Mail} title="Email Connection" badge={smtpData?.connected ? 'Connected' : 'Disconnected'}>
           <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
             {smtpData?.connected
               ? <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-medium"><CheckCircle2 size={18} /> Connected — {smtpData.provider}</div>
@@ -1069,16 +1280,12 @@ function SettingsTab() {
           <button onClick={smtpRefetch} className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium transition-colors">
             <RefreshCw size={14} /> Test Connection
           </button>
-        </div>
+        </SectionCard>
 
         {form && (
           <>
             {/* Brand Colors */}
-            <div className={cardClass}>
-              <div className="flex items-center gap-2 mb-4">
-                <Palette size={18} className="text-gray-500 dark:text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Brand Colors</h3>
-              </div>
+            <SectionCard id="colors" icon={Palette} title="Brand Colors">
               <div className="grid grid-cols-2 gap-4">
                 {[
                   ['primaryColor', 'Primary / Accent'],
@@ -1095,7 +1302,7 @@ function SettingsTab() {
                         type="color"
                         value={form[field] || '#000000'}
                         onChange={e => updateField(field, e.target.value)}
-                        className="w-9 h-9 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer p-0.5"
+                        className="w-9 h-9 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer p-0.5 flex-shrink-0"
                       />
                       <input
                         type="text"
@@ -1108,35 +1315,64 @@ function SettingsTab() {
                   </FormField>
                 ))}
               </div>
-            </div>
+              {/* Quick color scheme presets */}
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Quick Presets</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { name: 'Mentori Purple', primary: '#c432e2', header: '#ffffff', body: '#f4f5f7', content: '#ffffff', text: '#1c1f3e' },
+                    { name: 'Ocean Blue', primary: '#0086c0', header: '#1c1f3e', body: '#f0f4f8', content: '#ffffff', text: '#1c1f3e' },
+                    { name: 'Emerald', primary: '#059669', header: '#064e3b', body: '#f0fdf4', content: '#ffffff', text: '#1c1f3e' },
+                    { name: 'Sunset', primary: '#ea580c', header: '#431407', body: '#fff7ed', content: '#ffffff', text: '#1c1f3e' },
+                    { name: 'Dark Mode', primary: '#8b5cf6', header: '#1e1b4b', body: '#0f172a', content: '#1e293b', text: '#e2e8f0' },
+                  ].map(preset => (
+                    <button key={preset.name} type="button"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        primaryColor: preset.primary,
+                        headerBgColor: preset.header,
+                        bodyBgColor: preset.body,
+                        contentBgColor: preset.content,
+                        textColor: preset.text,
+                        footerBgColor: preset.body,
+                        mutedTextColor: '#6b7280',
+                      }))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: preset.primary }} />
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </SectionCard>
 
             {/* Logo */}
-            <div className={cardClass}>
-              <div className="flex items-center gap-2 mb-4">
-                <Image size={18} className="text-gray-500 dark:text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Logo</h3>
-              </div>
+            <SectionCard id="logo" icon={Image} title="Logo" badge={form.logoUrl ? 'Custom' : 'Text'}>
               <div className="space-y-4">
                 <FormField label="Logo Image URL">
                   <input type="text" value={form.logoUrl || ''} onChange={e => updateField('logoUrl', e.target.value)} className={inputClass} placeholder="https://example.com/logo.png (leave empty for text logo)" />
                 </FormField>
+                {form.logoUrl && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                    <img src={form.logoUrl} alt="Logo preview" style={{ maxWidth: form.logoWidth || 140, height: 'auto' }}
+                      className="rounded"
+                      onError={e => { e.target.style.display = 'none'; }} />
+                    <span className="text-xs text-gray-500">Preview</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField label="Alt Text">
                     <input type="text" value={form.logoAltText || ''} onChange={e => updateField('logoAltText', e.target.value)} className={inputClass} />
                   </FormField>
                   <FormField label="Width (px)">
-                    <input type="number" value={form.logoWidth || 140} onChange={e => updateField('logoWidth', parseInt(e.target.value, 10) || 140)} className={inputClass} />
+                    <input type="number" value={form.logoWidth || 140} onChange={e => updateField('logoWidth', parseInt(e.target.value, 10) || 140)} className={inputClass} min={40} max={400} />
                   </FormField>
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
             {/* Company & Footer */}
-            <div className={cardClass}>
-              <div className="flex items-center gap-2 mb-4">
-                <Globe size={18} className="text-gray-500 dark:text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Company & Footer</h3>
-              </div>
+            <SectionCard id="company" icon={Globe} title="Company & Footer">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField label="Company Name">
@@ -1146,44 +1382,53 @@ function SettingsTab() {
                     <input type="text" value={form.websiteUrl || ''} onChange={e => updateField('websiteUrl', e.target.value)} className={inputClass} />
                   </FormField>
                 </div>
-                <FormField label="Footer Text (optional extra line)">
-                  <input type="text" value={form.footerText || ''} onChange={e => updateField('footerText', e.target.value)} className={inputClass} placeholder="e.g. 123 Main Street, City, Country" />
+                <FormField label="Footer Text (tagline or address)">
+                  <input type="text" value={form.footerText || ''} onChange={e => updateField('footerText', e.target.value)} className={inputClass} placeholder='למשל: "לומדים חכם, לא קשה"' dir="rtl" />
                 </FormField>
                 <FormField label="Copyright Text (leave empty for default)">
-                  <input type="text" value={form.copyrightText || ''} onChange={e => updateField('copyrightText', e.target.value)} className={inputClass} placeholder={`© ${new Date().getFullYear()} ${form.companyName || 'Mentori'}. All rights reserved.`} />
+                  <input type="text" value={form.copyrightText || ''} onChange={e => updateField('copyrightText', e.target.value)} className={inputClass}
+                    placeholder={`© ${new Date().getFullYear()} ${form.companyName || 'Mentori'}. כל הזכויות שמורות.`} dir="rtl" />
                 </FormField>
               </div>
-            </div>
+            </SectionCard>
 
             {/* Social Media */}
-            <div className={cardClass}>
-              <div className="flex items-center gap-2 mb-4">
-                <Share2 size={18} className="text-gray-500 dark:text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Social Media</h3>
-              </div>
-              <div className="space-y-4">
+            <SectionCard id="social" icon={Share2} title="Social Media" badge={[form.socialFacebook, form.socialTwitter, form.socialLinkedin, form.socialInstagram].filter(Boolean).length || null}>
+              <div className="space-y-3">
                 {[
-                  ['socialFacebook', 'Facebook URL'],
-                  ['socialTwitter', 'Twitter / X URL'],
-                  ['socialLinkedin', 'LinkedIn URL'],
-                  ['socialInstagram', 'Instagram URL'],
-                ].map(([field, label]) => (
+                  ['socialInstagram', 'Instagram', 'https://instagram.com/...  or @handle'],
+                  ['socialFacebook', 'Facebook', 'https://facebook.com/...'],
+                  ['socialLinkedin', 'LinkedIn', 'https://linkedin.com/in/...'],
+                  ['socialTwitter', 'Twitter / X', 'https://twitter.com/...  or @handle'],
+                ].map(([field, label, placeholder]) => (
                   <FormField key={field} label={label}>
-                    <input type="text" value={form[field] || ''} onChange={e => updateField(field, e.target.value)} className={inputClass} placeholder="https://" />
+                    <input type="text" value={form[field] || ''} onChange={e => updateField(field, e.target.value)} className={inputClass} placeholder={placeholder} />
                   </FormField>
                 ))}
               </div>
-            </div>
+            </SectionCard>
+
+            {/* App Store */}
+            <SectionCard id="appstore" icon={Smartphone} title="App Store" badge={form.appStoreUrl ? 'Active' : null}>
+              <div className="space-y-4">
+                <FormField label="App Store URL (iOS)">
+                  <input type="text" value={form.appStoreUrl || ''} onChange={e => updateField('appStoreUrl', e.target.value)} className={inputClass} placeholder="https://apps.apple.com/il/app/..." />
+                </FormField>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  When set, a Hebrew App Store badge will appear in the email footer.
+                </p>
+              </div>
+            </SectionCard>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
-              <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors">
+            <div className="flex items-center gap-3 sticky bottom-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm py-4 px-1 -mx-1 rounded-xl z-10">
+              <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
                 <Save size={14} /> {saving ? 'Saving...' : 'Save Settings'}
               </button>
               <button onClick={handleReset} className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium transition-colors">
                 <RotateCcw size={14} /> Reset to Defaults
               </button>
-              {saveMsg && <span className="text-sm font-medium text-green-600 dark:text-green-400">{saveMsg}</span>}
+              {saveMsg && <span className="text-sm font-medium text-green-600 dark:text-green-400 animate-pulse">{saveMsg}</span>}
             </div>
           </>
         )}
@@ -1191,11 +1436,46 @@ function SettingsTab() {
 
       {/* Right column — Live Preview */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Eye size={18} className="text-gray-500 dark:text-gray-400" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Live Preview</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye size={18} className="text-gray-500 dark:text-gray-400" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Live Preview</h3>
+          </div>
+          {/* Device toggle */}
+          <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <button type="button" onClick={() => setPreviewDevice('desktop')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                previewDevice === 'desktop' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+              Desktop
+            </button>
+            <button type="button" onClick={() => setPreviewDevice('mobile')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                previewDevice === 'mobile' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+              Mobile
+            </button>
+          </div>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden" style={{ height: '700px' }}>
+
+        {/* Preview template selector */}
+        <div className="flex flex-wrap gap-1.5">
+          {PREVIEW_TEMPLATES.map(t => (
+            <button key={t.id} type="button" onClick={() => setPreviewTemplate(t.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                previewTemplate === t.id
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-300 dark:border-purple-700'
+                  : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Preview frame */}
+        <div className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 mx-auto ${
+          previewDevice === 'mobile' ? 'max-w-[375px]' : 'w-full'
+        }`} style={{ height: previewDevice === 'mobile' ? '667px' : '750px' }}>
           {previewHtml ? (
             <iframe
               srcDoc={previewHtml}
@@ -1207,6 +1487,11 @@ function SettingsTab() {
             <div className="flex items-center justify-center h-full text-sm text-gray-400 dark:text-gray-500">Loading preview...</div>
           )}
         </div>
+
+        {/* Preview info */}
+        <p className="text-xs text-center text-gray-400 dark:text-gray-500">
+          Preview updates automatically as you change settings
+        </p>
       </div>
     </div>
   );
