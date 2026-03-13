@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
 import * as api from '../../lib/api.js';
 import { SUBSCRIPTION_COLORS } from '../../lib/constants.js';
@@ -14,6 +14,8 @@ export default function UsersPage() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const users = data || [];
 
@@ -23,10 +25,18 @@ export default function UsersPage() {
         const searchStr = `${u.name || ''} ${u.email || ''}`.toLowerCase();
         if (search && !searchStr.includes(search.toLowerCase())) return false;
         if (statusFilter !== 'all' && u.subscriptionStatus !== statusFilter) return false;
+        if (dateFrom && u.createdAt) {
+          if (new Date(u.createdAt) < new Date(dateFrom)) return false;
+        }
+        if (dateTo && u.createdAt) {
+          const endOfDay = new Date(dateTo);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (new Date(u.createdAt) > endOfDay) return false;
+        }
         return true;
       })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [users, search, statusFilter]);
+  }, [users, search, statusFilter, dateFrom, dateTo]);
 
   if (loading) {
     return (
@@ -74,6 +84,32 @@ export default function UsersPage() {
             </option>
           ))}
         </select>
+
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-500 dark:text-gray-400">Joined:</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+          <span className="text-sm text-gray-400">-</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Clear dates"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -139,7 +175,12 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                    {formatDate(user.createdAt)}
+                    <div>{formatDate(user.createdAt)}</div>
+                    {user.createdAt && (
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
+                        {new Date(user.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200 text-right">
                     {user.mrr > 0 ? formatCurrency(user.mrr, 'ILS') : '--'}

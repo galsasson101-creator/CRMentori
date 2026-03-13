@@ -323,9 +323,13 @@ class UserRepository {
 
     const totalPaid = subscriptionTotal + paymentsTotal;
 
+    // Extract account creation time from MongoDB ObjectId
+    const createdAt = rest.createdAt || (ObjectId.isValid(id) ? new ObjectId(id).getTimestamp().toISOString() : null);
+
     return {
       id,
       ...rest,
+      createdAt,
       tier,
       subscriptionStatus,
       mrr,
