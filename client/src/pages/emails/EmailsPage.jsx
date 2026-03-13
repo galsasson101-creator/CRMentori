@@ -4,8 +4,7 @@ import {
   CheckCircle2, XCircle, Zap, FileText, History, Settings, Users,
   Clock, MailCheck, MailX, RefreshCw, ChevronDown, ChevronUp, Eye,
   Calendar, Filter, UserCheck, RotateCcw, Palette, Image, Globe, Share2,
-  Smartphone, Type, List, Minus, MousePointerClick, Heading1, Heading2, Heading3,
-  AlignRight, Bold, ListOrdered, Code, Link, Copy, Check
+  Smartphone, Monitor,
 } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
 import * as api from '../../lib/api.js';
@@ -13,6 +12,7 @@ import { formatDate, formatRelativeDate, capitalize } from '../../lib/formatters
 import Modal from '../../components/shared/Modal.jsx';
 import EmptyState from '../../components/shared/EmptyState.jsx';
 import { SUBSCRIPTION_COLORS } from '../../lib/constants.js';
+import EmailEditor from '../../components/emails/EmailEditor.jsx';
 
 // ── Tab config (4 tabs) ──
 const TABS = [
@@ -128,11 +128,12 @@ function CampaignsTab() {
 
   const handleRun = async (id) => {
     try {
-      await api.post(`/emails/campaigns/${id}/run`);
-      alert('Campaign is being sent! Check the History tab for results.');
+      const res = await api.post(`/emails/campaigns/${id}/run`);
+      alert(res.message || 'Campaign sent successfully!');
       refetch();
     } catch (err) {
       alert('Failed: ' + (err.message || 'Unknown error'));
+      refetch();
     }
   };
 
@@ -293,6 +294,9 @@ function CampaignForm({ campaign, onSave, onCancel }) {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
+  const [livePreviewHtml, setLivePreviewHtml] = useState('');
+  const [livePreviewDevice, setLivePreviewDevice] = useState('desktop');
+  const previewDebounceRef = useRef(null);
 
   // Manual user selection state
   const [userSearch, setUserSearch] = useState('');
@@ -342,6 +346,21 @@ function CampaignForm({ campaign, onSave, onCancel }) {
     next.has(id) ? next.delete(id) : next.add(id);
     setSelectedUsers(next);
   };
+
+  // Debounced live preview
+  useEffect(() => {
+    if (!form.htmlBody) { setLivePreviewHtml(''); return; }
+    clearTimeout(previewDebounceRef.current);
+    previewDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.post('/emails/preview-branded', {
+          html: form.htmlBody.replace(/\{\{name\}\}/g, 'ישראל ישראלי'),
+        });
+        setLivePreviewHtml(res.html);
+      } catch { /* ignore */ }
+    }, 600);
+    return () => clearTimeout(previewDebounceRef.current);
+  }, [form.htmlBody]);
 
   const handleTemplateSelect = (templateId) => {
     setSelectedTemplate(templateId);
@@ -401,8 +420,9 @@ function CampaignForm({ campaign, onSave, onCancel }) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-blue-200 dark:border-blue-800 p-6 mb-6 space-y-6 shadow-sm">
-      <div className="flex justify-between items-center">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-blue-200 dark:border-blue-800 mb-6 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
           {campaign ? 'Edit' : 'New'} Campaign
         </h3>
@@ -411,299 +431,357 @@ function CampaignForm({ campaign, onSave, onCancel }) {
         </button>
       </div>
 
-      {/* Section 1: Details */}
-      <div className="space-y-4">
-        <SectionHeader icon={Mail} title="Details" />
+      {/* Two-column layout: Form left, Preview right */}
+      <div className="grid grid-cols-1 xl:grid-cols-2">
+        {/* ── Left column: Form ── */}
+        <div className="p-6 space-y-6 xl:border-r border-gray-200 dark:border-gray-700 xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Campaign Name">
-            <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Weekly Newsletter" className={inputClass} />
-          </FormField>
-          <FormField label="Email Subject">
-            <input required value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-              placeholder="Use {{name}} for personalization" className={inputClass} />
-          </FormField>
+          {/* Section 1: Details */}
+          <div className="space-y-4">
+            <SectionHeader icon={Mail} title="Details" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Campaign Name">
+                <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Weekly Newsletter" className={inputClass} />
+              </FormField>
+              <FormField label="Email Subject">
+                <input required value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+                  placeholder="Use {{name}} for personalization" className={inputClass} />
+              </FormField>
+            </div>
+
+            {/* Template selector */}
+            {templateList.length > 0 && (
+              <FormField label="Load from Template">
+                <select value={selectedTemplate} onChange={e => handleTemplateSelect(e.target.value)} className={inputClass}>
+                  <option value="">-- Choose template --</option>
+                  {templateList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </FormField>
+            )}
+
+            <FormField label={
+              <span>Email Body <span className="text-gray-400 font-normal">(use {'{{name}}'} to personalize)</span></span>
+            }>
+              <EmailEditor
+                value={form.htmlBody}
+                onChange={(html) => setForm(f => ({ ...f, htmlBody: html }))}
+                primaryColor={form.primaryColor || '#c432e2'}
+                placeholder="שלום {{name}}, יש לנו חדשות מרגשות בשבילך..."
+              />
+            </FormField>
+          </div>
+
+          {/* Section 2: Recipients */}
+          <div className="space-y-4">
+            <SectionHeader icon={Users} title="Recipients" badge={recipientCount > 0 ? `${recipientCount} recipients` : null} />
+
+            <div className="flex gap-2">
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, recipientMode: 'filter' }))}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  form.recipientMode === 'filter'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                    : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Filter size={14} /> Use Filters
+              </button>
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, recipientMode: 'manual' }))}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  form.recipientMode === 'manual'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                    : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <UserCheck size={14} /> Select Users
+              </button>
+            </div>
+
+            {form.recipientMode === 'filter' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField label="Filter Type">
+                  <select value={form.recipientFilter} onChange={e => setForm(f => ({ ...f, recipientFilter: e.target.value }))} className={inputClass}>
+                    <option value="all">All users with email</option>
+                    <option value="tier">By tier</option>
+                    <option value="status">By subscription status</option>
+                    <option value="custom">Custom email list</option>
+                  </select>
+                </FormField>
+                {form.recipientFilter === 'tier' && (
+                  <FormField label="Tier">
+                    <select value={form.recipientTier || ''} onChange={e => setForm(f => ({ ...f, recipientTier: e.target.value }))} className={inputClass}>
+                      <option value="">-- Select tier --</option>
+                      <option value="free">Free</option>
+                      <option value="basic">Basic</option>
+                      <option value="pro">Pro</option>
+                    </select>
+                  </FormField>
+                )}
+                {form.recipientFilter === 'status' && (
+                  <FormField label="Status">
+                    <select value={form.recipientStatus || ''} onChange={e => setForm(f => ({ ...f, recipientStatus: e.target.value }))} className={inputClass}>
+                      <option value="">-- Select status --</option>
+                      <option value="active">Active</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="free">Free</option>
+                    </select>
+                  </FormField>
+                )}
+                {form.recipientFilter === 'custom' && (
+                  <FormField label="Emails (comma-separated)">
+                    <input value={typeof form.recipientEmails === 'string' ? form.recipientEmails : (form.recipientEmails || []).join(', ')}
+                      onChange={e => setForm(f => ({ ...f, recipientEmails: e.target.value }))}
+                      placeholder="a@example.com, b@example.com" className={inputClass} />
+                  </FormField>
+                )}
+              </div>
+            ) : (
+              /* Manual user selection table */
+              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[180px]">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={userSearch} onChange={e => setUserSearch(e.target.value)}
+                        placeholder="Search users..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none" />
+                    </div>
+                    <select value={userTierFilter} onChange={e => setUserTierFilter(e.target.value)}
+                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-lg text-xs text-gray-900 dark:text-gray-100 outline-none">
+                      <option value="all">All Tiers</option>
+                      <option value="free">Free</option>
+                      <option value="basic">Basic</option>
+                      <option value="pro">Pro</option>
+                    </select>
+                    <select value={userStatusFilter} onChange={e => setUserStatusFilter(e.target.value)}
+                      className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-lg text-xs text-gray-900 dark:text-gray-100 outline-none">
+                      <option value="all">All Statuses</option>
+                      <option value="active">Active</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="free">Free</option>
+                    </select>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                      {selectedUsers.size} selected
+                    </span>
+                  </div>
+                </div>
+
+                {usersLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="overflow-y-auto max-h-[280px]">
+                    <table className="min-w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 py-2 text-left w-10">
+                            <input type="checkbox"
+                              checked={filteredUsers.length > 0 && selectedUsers.size === filteredUsers.length}
+                              onChange={toggleAllUsers}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Email</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Tier</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {filteredUsers.map(user => {
+                          const id = user.id || user._id;
+                          const name = user.name || '--';
+                          const status = user.subscriptionStatus || 'free';
+                          const statusColor = SUBSCRIPTION_COLORS[status] || '#c4c4c4';
+                          const isSelected = selectedUsers.has(id);
+
+                          return (
+                            <tr key={id} onClick={() => toggleUser(id)}
+                              className={`cursor-pointer transition-colors ${
+                                isSelected ? 'bg-blue-50/60 dark:bg-blue-900/20' : 'hover:bg-gray-50/50 dark:hover:bg-gray-700/50'
+                              }`}>
+                              <td className="px-3 py-2">
+                                <input type="checkbox" checked={isSelected} onChange={() => toggleUser(id)}
+                                  onClick={e => e.stopPropagation()} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                                    style={{ backgroundColor: statusColor }}>
+                                    {name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{name}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{user.email}</td>
+                              <td className="px-3 py-2">
+                                <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 capitalize">
+                                  {user.tier || '--'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: statusColor }}>
+                                  {capitalize(status)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {filteredUsers.length === 0 && (
+                          <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400 text-sm">No users with email found</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 flex items-center justify-between">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{filteredUsers.length} users shown</span>
+                  <button type="button" onClick={toggleAllUsers}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                    {selectedUsers.size === filteredUsers.length ? 'Deselect all' : `Select all ${filteredUsers.length}`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Schedule */}
+          <div className="space-y-4">
+            <SectionHeader icon={Clock} title="Schedule" />
+
+            <div className="flex gap-2">
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, scheduleType: 'now' }))}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  form.scheduleType === 'now'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                    : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Send size={14} /> Send Now
+              </button>
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, scheduleType: 'scheduled' }))}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  form.scheduleType === 'scheduled'
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                    : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Calendar size={14} /> Schedule Recurring
+              </button>
+            </div>
+
+            {form.scheduleType === 'scheduled' && (
+              <FormField label="Cron Schedule">
+                <input value={form.cronExpression} onChange={e => setForm(f => ({ ...f, cronExpression: e.target.value }))}
+                  placeholder="0 9 * * *" className={inputClass} />
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {CRON_PRESETS.map(p => (
+                    <button key={p.value} type="button" onClick={() => setForm(f => ({ ...f, cronExpression: p.value }))}
+                      className="px-2 py-0.5 rounded-md text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </FormField>
+            )}
+          </div>
+
+          {/* Section 4: Actions */}
+          <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+            {campaign?.id ? (
+              <button type="button" onClick={() => handleSubmit('save')} disabled={saving || !form.name || !form.subject || !form.htmlBody}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
+                <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            ) : (
+              <>
+                <button type="button" onClick={() => handleSubmit('draft')} disabled={saving || !form.name || !form.subject || !form.htmlBody}
+                  className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
+                  <Save size={16} /> Save Draft
+                </button>
+                {form.scheduleType === 'now' ? (
+                  <button type="button" onClick={() => handleSubmit('send-now')}
+                    disabled={saving || !form.name || !form.subject || !form.htmlBody || recipientCount === 0}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
+                    <Send size={16} /> {saving ? 'Sending...' : `Send Now to ${recipientCount} recipients`}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleSubmit('activate')}
+                    disabled={saving || !form.name || !form.subject || !form.htmlBody || !form.cronExpression}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
+                    <Play size={16} /> {saving ? 'Activating...' : 'Activate Schedule'}
+                  </button>
+                )}
+              </>
+            )}
+            <button type="button" onClick={onCancel}
+              className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              Cancel
+            </button>
+          </div>
         </div>
 
-        {/* Template selector */}
-        {templateList.length > 0 && (
-          <FormField label="Load from Template">
-            <select value={selectedTemplate} onChange={e => handleTemplateSelect(e.target.value)} className={inputClass}>
-              <option value="">-- Choose template --</option>
-              {templateList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </FormField>
-        )}
+        {/* ── Right column: Live Preview (sticky) ── */}
+        <div className="p-6 bg-gray-50/50 dark:bg-gray-900/20 xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto">
+          <div className="xl:sticky xl:top-0 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye size={16} className="text-gray-400" />
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Live Preview</h4>
+              </div>
+              <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <button type="button" onClick={() => setLivePreviewDevice('desktop')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    livePreviewDevice === 'desktop' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                  }`}>
+                  <Monitor size={12} /> Desktop
+                </button>
+                <button type="button" onClick={() => setLivePreviewDevice('mobile')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    livePreviewDevice === 'mobile' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                  }`}>
+                  <Smartphone size={12} /> Mobile
+                </button>
+              </div>
+            </div>
 
-        <FormField label={
-          <div className="flex items-center justify-between w-full">
-            <span>Email Body <span className="text-gray-400 font-normal">(HTML, use {'{{name}}'} to personalize)</span></span>
+            {livePreviewHtml ? (
+              <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-all duration-300 mx-auto ${
+                livePreviewDevice === 'mobile' ? 'max-w-[375px]' : 'w-full'
+              }`}>
+                <iframe
+                  srcDoc={livePreviewHtml}
+                  title="Live Email Preview"
+                  className="w-full border-0"
+                  style={{ height: livePreviewDevice === 'mobile' ? '600px' : '700px' }}
+                  sandbox="allow-same-origin"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                  <Mail size={24} className="text-gray-300 dark:text-gray-600" />
+                </div>
+                <p className="text-sm text-gray-400 dark:text-gray-500">Start typing in the editor to see<br />a live branded preview here</p>
+              </div>
+            )}
+
             {form.htmlBody && (
               <button type="button" onClick={handlePreview}
-                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 font-medium">
-                <Eye size={12} /> Preview Branded
+                className="flex items-center justify-center gap-2 w-full py-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium rounded-lg transition-colors">
+                <Eye size={13} /> Open Full-Screen Preview
               </button>
             )}
+
+            <p className="text-[11px] text-center text-gray-400 dark:text-gray-500">
+              Preview updates automatically as you type
+            </p>
           </div>
-        }>
-          <HtmlBlockToolbar onInsert={(block) => setForm(f => ({ ...f, htmlBody: f.htmlBody + block }))} primaryColor={form.primaryColor || '#c432e2'} />
-          <textarea rows={12} value={form.htmlBody} onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))}
-            placeholder={'<h1>שלום {{name}}</h1>\n<p>יש לנו חדשות מרגשות בשבילך...</p>'}
-            className={`${inputClass} font-mono resize-y`} dir="ltr" />
-        </FormField>
-      </div>
-
-      {/* Section 2: Recipients */}
-      <div className="space-y-4">
-        <SectionHeader icon={Users} title="Recipients" badge={recipientCount > 0 ? `${recipientCount} recipients` : null} />
-
-        <div className="flex gap-2">
-          <button type="button"
-            onClick={() => setForm(f => ({ ...f, recipientMode: 'filter' }))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              form.recipientMode === 'filter'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <Filter size={14} /> Use Filters
-          </button>
-          <button type="button"
-            onClick={() => setForm(f => ({ ...f, recipientMode: 'manual' }))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              form.recipientMode === 'manual'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <UserCheck size={14} /> Select Users
-          </button>
         </div>
-
-        {form.recipientMode === 'filter' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Filter Type">
-              <select value={form.recipientFilter} onChange={e => setForm(f => ({ ...f, recipientFilter: e.target.value }))} className={inputClass}>
-                <option value="all">All users with email</option>
-                <option value="tier">By tier</option>
-                <option value="status">By subscription status</option>
-                <option value="custom">Custom email list</option>
-              </select>
-            </FormField>
-            {form.recipientFilter === 'tier' && (
-              <FormField label="Tier">
-                <select value={form.recipientTier || ''} onChange={e => setForm(f => ({ ...f, recipientTier: e.target.value }))} className={inputClass}>
-                  <option value="">-- Select tier --</option>
-                  <option value="free">Free</option>
-                  <option value="basic">Basic</option>
-                  <option value="pro">Pro</option>
-                </select>
-              </FormField>
-            )}
-            {form.recipientFilter === 'status' && (
-              <FormField label="Status">
-                <select value={form.recipientStatus || ''} onChange={e => setForm(f => ({ ...f, recipientStatus: e.target.value }))} className={inputClass}>
-                  <option value="">-- Select status --</option>
-                  <option value="active">Active</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="free">Free</option>
-                </select>
-              </FormField>
-            )}
-            {form.recipientFilter === 'custom' && (
-              <FormField label="Emails (comma-separated)">
-                <input value={typeof form.recipientEmails === 'string' ? form.recipientEmails : (form.recipientEmails || []).join(', ')}
-                  onChange={e => setForm(f => ({ ...f, recipientEmails: e.target.value }))}
-                  placeholder="a@example.com, b@example.com" className={inputClass} />
-              </FormField>
-            )}
-          </div>
-        ) : (
-          /* Manual user selection table */
-          <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1 min-w-[180px]">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" value={userSearch} onChange={e => setUserSearch(e.target.value)}
-                    placeholder="Search users..." className="w-full pl-8 pr-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none" />
-                </div>
-                <select value={userTierFilter} onChange={e => setUserTierFilter(e.target.value)}
-                  className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-lg text-xs text-gray-900 dark:text-gray-100 outline-none">
-                  <option value="all">All Tiers</option>
-                  <option value="free">Free</option>
-                  <option value="basic">Basic</option>
-                  <option value="pro">Pro</option>
-                </select>
-                <select value={userStatusFilter} onChange={e => setUserStatusFilter(e.target.value)}
-                  className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 rounded-lg text-xs text-gray-900 dark:text-gray-100 outline-none">
-                  <option value="all">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="free">Free</option>
-                </select>
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  {selectedUsers.size} selected
-                </span>
-              </div>
-            </div>
-
-            {usersLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              <div className="overflow-y-auto max-h-[320px]">
-                <table className="min-w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
-                    <tr>
-                      <th className="px-3 py-2 text-left w-10">
-                        <input type="checkbox"
-                          checked={filteredUsers.length > 0 && selectedUsers.size === filteredUsers.length}
-                          onChange={toggleAllUsers}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Email</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Tier</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {filteredUsers.map(user => {
-                      const id = user.id || user._id;
-                      const name = user.name || '--';
-                      const status = user.subscriptionStatus || 'free';
-                      const statusColor = SUBSCRIPTION_COLORS[status] || '#c4c4c4';
-                      const isSelected = selectedUsers.has(id);
-
-                      return (
-                        <tr key={id} onClick={() => toggleUser(id)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-blue-50/60 dark:bg-blue-900/20' : 'hover:bg-gray-50/50 dark:hover:bg-gray-700/50'
-                          }`}>
-                          <td className="px-3 py-2">
-                            <input type="checkbox" checked={isSelected} onChange={() => toggleUser(id)}
-                              onClick={e => e.stopPropagation()} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
-                                style={{ backgroundColor: statusColor }}>
-                                {name.charAt(0).toUpperCase()}
-                              </div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{name}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{user.email}</td>
-                          <td className="px-3 py-2">
-                            <span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 capitalize">
-                              {user.tier || '--'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: statusColor }}>
-                              {capitalize(status)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {filteredUsers.length === 0 && (
-                      <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400 text-sm">No users with email found</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 flex items-center justify-between">
-              <span className="text-xs text-gray-500 dark:text-gray-400">{filteredUsers.length} users shown</span>
-              <button type="button" onClick={toggleAllUsers}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
-                {selectedUsers.size === filteredUsers.length ? 'Deselect all' : `Select all ${filteredUsers.length}`}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Section 3: Schedule */}
-      <div className="space-y-4">
-        <SectionHeader icon={Clock} title="Schedule" />
-
-        <div className="flex gap-2">
-          <button type="button"
-            onClick={() => setForm(f => ({ ...f, scheduleType: 'now' }))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              form.scheduleType === 'now'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <Send size={14} /> Send Now
-          </button>
-          <button type="button"
-            onClick={() => setForm(f => ({ ...f, scheduleType: 'scheduled' }))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              form.scheduleType === 'scheduled'
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-          >
-            <Calendar size={14} /> Schedule Recurring
-          </button>
-        </div>
-
-        {form.scheduleType === 'scheduled' && (
-          <FormField label="Cron Schedule">
-            <input value={form.cronExpression} onChange={e => setForm(f => ({ ...f, cronExpression: e.target.value }))}
-              placeholder="0 9 * * *" className={inputClass} />
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {CRON_PRESETS.map(p => (
-                <button key={p.value} type="button" onClick={() => setForm(f => ({ ...f, cronExpression: p.value }))}
-                  className="px-2 py-0.5 rounded-md text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </FormField>
-        )}
-      </div>
-
-      {/* Section 4: Actions */}
-      <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-        {campaign?.id ? (
-          <button type="button" onClick={() => handleSubmit('save')} disabled={saving || !form.name || !form.subject || !form.htmlBody}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-            <Save size={16} /> {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={() => handleSubmit('draft')} disabled={saving || !form.name || !form.subject || !form.htmlBody}
-              className="flex items-center gap-2 px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
-              <Save size={16} /> Save Draft
-            </button>
-            {form.scheduleType === 'now' ? (
-              <button type="button" onClick={() => handleSubmit('send-now')}
-                disabled={saving || !form.name || !form.subject || !form.htmlBody || recipientCount === 0}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-                <Send size={16} /> {saving ? 'Sending...' : `Send Now to ${recipientCount} recipients`}
-              </button>
-            ) : (
-              <button type="button" onClick={() => handleSubmit('activate')}
-                disabled={saving || !form.name || !form.subject || !form.htmlBody || !form.cronExpression}
-                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-                <Play size={16} /> {saving ? 'Activating...' : 'Activate Schedule'}
-              </button>
-            )}
-          </>
-        )}
-        <button type="button" onClick={onCancel}
-          className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          Cancel
-        </button>
       </div>
 
       {/* Preview Modal */}
@@ -963,103 +1041,6 @@ function HistoryTab() {
   );
 }
 
-// ── HTML Block Toolbar — insert common email blocks ──
-const HTML_BLOCKS = [
-  { id: 'h1', label: 'H1', icon: Heading1, html: '<h1>כותרת ראשית</h1>\n' },
-  { id: 'h2', label: 'H2', icon: Heading2, html: '<h2>כותרת משנית</h2>\n' },
-  { id: 'h3', label: 'H3', icon: Heading3, html: '<h3>כותרת קטנה</h3>\n' },
-  { id: 'p', label: 'Paragraph', icon: AlignRight, html: '<p>טקסט פסקה כאן...</p>\n' },
-  { id: 'bold', label: 'Bold', icon: Bold, html: '<p><strong>טקסט מודגש</strong></p>\n' },
-  { id: 'ul', label: 'Bullet List', icon: List, html: '<ul>\n  <li>פריט ראשון</li>\n  <li>פריט שני</li>\n  <li>פריט שלישי</li>\n</ul>\n' },
-  { id: 'ol', label: 'Numbered List', icon: ListOrdered, html: '<ol>\n  <li>שלב ראשון</li>\n  <li>שלב שני</li>\n  <li>שלב שלישי</li>\n</ol>\n' },
-  { id: 'divider', label: 'Divider', icon: Minus, html: '<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;" />\n' },
-  { id: 'link', label: 'Link', icon: Link, html: '<p><a href="https://mentori.app" style="color:#c432e2;text-decoration:underline;">לחצו כאן</a></p>\n' },
-  { id: 'name', label: '{{name}}', icon: Type, html: '{{name}}' },
-];
-
-function HtmlBlockToolbar({ onInsert, primaryColor }) {
-  const [copiedId, setCopiedId] = useState(null);
-
-  const ctaBlock = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
-  <tr>
-    <td align="center" style="direction:rtl;text-align:center;">
-      <a href="https://mentori.app" target="_blank" style="display:inline-block;background-color:${primaryColor};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;line-height:1.2;">לחצו כאן</a>
-    </td>
-  </tr>
-</table>\n`;
-
-  const imageBlock = `<img src="https://via.placeholder.com/536x200" alt="תמונה" style="display:block;max-width:100%;height:auto;border-radius:8px;margin:0 0 16px 0;" />\n`;
-
-  const twoColBlock = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
-  <tr>
-    <td width="50%" style="padding:0 8px 0 0;direction:rtl;text-align:right;vertical-align:top;">
-      <h3>עמודה ימנית</h3>
-      <p>תוכן כאן...</p>
-    </td>
-    <td width="50%" style="padding:0 0 0 8px;direction:rtl;text-align:right;vertical-align:top;">
-      <h3>עמודה שמאלית</h3>
-      <p>תוכן כאן...</p>
-    </td>
-  </tr>
-</table>\n`;
-
-  const handleInsert = (id, html) => {
-    onInsert(html);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1200);
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-gray-900/50 border border-b-0 border-gray-300 dark:border-gray-600 rounded-t-lg">
-      {HTML_BLOCKS.map(block => {
-        const Icon = block.icon;
-        return (
-          <button key={block.id} type="button" onClick={() => handleInsert(block.id, block.html)}
-            title={block.label}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-              copiedId === block.id
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}>
-            {copiedId === block.id ? <Check size={13} /> : <Icon size={13} />}
-            <span className="hidden sm:inline">{block.label}</span>
-          </button>
-        );
-      })}
-      <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1" />
-      <button type="button" onClick={() => handleInsert('cta', ctaBlock)}
-        title="CTA Button"
-        className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-          copiedId === 'cta'
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-            : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-800'
-        }`}>
-        {copiedId === 'cta' ? <Check size={13} /> : <MousePointerClick size={13} />}
-        <span className="hidden sm:inline">CTA Button</span>
-      </button>
-      <button type="button" onClick={() => handleInsert('image', imageBlock)}
-        title="Image Block"
-        className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-          copiedId === 'image'
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
-        }`}>
-        {copiedId === 'image' ? <Check size={13} /> : <Image size={13} />}
-        <span className="hidden sm:inline">Image</span>
-      </button>
-      <button type="button" onClick={() => handleInsert('2col', twoColBlock)}
-        title="Two Columns"
-        className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-          copiedId === '2col'
-            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
-        }`}>
-        {copiedId === '2col' ? <Check size={13} /> : <Code size={13} />}
-        <span className="hidden sm:inline">2-Col</span>
-      </button>
-    </div>
-  );
-}
 
 // ── Preview Content Templates for Settings ──
 const PREVIEW_TEMPLATES = [

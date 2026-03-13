@@ -56,3 +56,36 @@ body.dark {
 .dark * {
   scrollbar-color: #4b5563 transparent;
 }
+
+/* TipTap Email Editor */
+.email-editor .ProseMirror {
+  direction: rtl;
+  text-align: right;
+  font-family: 'Heebo', Arial, sans-serif;
+  min-height: 300px;
+  padding: 16px;
+  outline: none;
+}
+.email-editor .ProseMirror h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
+.email-editor .ProseMirror h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.625rem; }
+.email-editor .ProseMirror h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+.email-editor .ProseMirror p { margin-bottom: 0.5rem; line-height: 1.6; }
+.email-editor .ProseMirror ul { list-style: disc; padding-right: 1.5rem; margin-bottom: 0.5rem; }
+.email-editor .ProseMirror ol { list-style: decimal; padding-right: 1.5rem; margin-bottom: 0.5rem; }
+.email-editor .ProseMirror li { margin-bottom: 0.25rem; }
+.email-editor .ProseMirror hr { border: none; border-top: 1px solid #e5e7eb; margin: 1rem 0; }
+.email-editor .ProseMirror a { color: var(--primary-color, #c432e2); text-decoration: underline; }
+.email-editor .ProseMirror img { max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 0.75rem; }
+.email-editor .ProseMirror .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: right;
+  color: #9ca3af;
+  pointer-events: none;
+  height: 0;
+}
+.dark .email-editor .ProseMirror {
+  color: #e5e7eb;
+}
+.dark .email-editor .ProseMirror hr {
+  border-top-color: #374151;
+}

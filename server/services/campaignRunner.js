@@ -47,6 +47,11 @@ async function executeCampaign(campaign) {
     text: campaign.textBody,
   });
 
+  const sentCount = results.filter(r => r.status === 'sent').length;
+  const failedCount = results.filter(r => r.status === 'failed').length;
+
+  // Batch all file writes together at the end (after async work is done)
+  // to minimize nodemon restart interference
   for (const result of results) {
     emailLogRepo.create({
       ...result,
@@ -55,9 +60,6 @@ async function executeCampaign(campaign) {
       type: 'campaign',
     });
   }
-
-  const sentCount = results.filter(r => r.status === 'sent').length;
-  const failedCount = results.filter(r => r.status === 'failed').length;
 
   campaignRepo.update(campaign.id, {
     lastRun: new Date().toISOString(),
