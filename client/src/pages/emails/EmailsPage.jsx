@@ -406,11 +406,23 @@ function CampaignForm({ campaign, onSave, onCancel }) {
         payload.scheduleType = payload.scheduleType || 'now';
       }
 
+      let savedCampaign;
       if (campaign?.id) {
-        await api.put(`/emails/campaigns/${campaign.id}`, payload);
+        savedCampaign = await api.put(`/emails/campaigns/${campaign.id}`, payload);
       } else {
-        await api.post('/emails/campaigns', payload);
+        savedCampaign = await api.post('/emails/campaigns', payload);
       }
+
+      // For "send now", trigger the run after creation (separate request to avoid nodemon restart issues)
+      if (submitType === 'send-now' && savedCampaign?.id) {
+        try {
+          const runResult = await api.post(`/emails/campaigns/${savedCampaign.id}/run`);
+          alert(runResult.message || 'Campaign sent successfully!');
+        } catch (runErr) {
+          alert('Campaign saved but sending failed: ' + (runErr.message || 'Unknown error'));
+        }
+      }
+
       onSave();
     } catch (err) {
       alert('Error: ' + (err.message || 'Failed to save'));

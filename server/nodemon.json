@@ -1,3 +1,5 @@
 {
-  "ignore": ["data/"]
+  "ignore": ["./data/*", "data/*", "*.json"],
+  "watch": ["*.js", "routes/", "services/", "dal/", "middleware/", "models/", "templates/", "db/"],
+  "ext": "js"
 }

@@ -18,7 +18,10 @@ async function resolveRecipients(campaign) {
   const filter = campaign.recipientFilter || 'all';
 
   if (filter === 'custom' && campaign.recipientEmails?.length > 0) {
-    return campaign.recipientEmails.map(email => ({ email, name: '' }));
+    const emails = typeof campaign.recipientEmails === 'string'
+      ? campaign.recipientEmails.split(',').map(e => e.trim()).filter(Boolean)
+      : campaign.recipientEmails;
+    return emails.map(email => ({ email, name: '' }));
   }
 
   const allUsers = await userRepo.getAll();
@@ -37,7 +40,7 @@ async function resolveRecipients(campaign) {
 
 async function executeCampaign(campaign) {
   const recipients = await resolveRecipients(campaign);
-  if (recipients.length === 0) return { sent: 0, failed: 0 };
+  if (recipients.length === 0) return { sent: 0, failed: 0, results: [] };
 
   const brandedHtml = wrapInBrandedTemplate(campaign.htmlBody || '');
 
@@ -50,23 +53,8 @@ async function executeCampaign(campaign) {
   const sentCount = results.filter(r => r.status === 'sent').length;
   const failedCount = results.filter(r => r.status === 'failed').length;
 
-  // Batch all file writes together at the end (after async work is done)
-  // to minimize nodemon restart interference
-  for (const result of results) {
-    emailLogRepo.create({
-      ...result,
-      campaignId: campaign.id,
-      campaignName: campaign.name,
-      type: 'campaign',
-    });
-  }
-
-  campaignRepo.update(campaign.id, {
-    lastRun: new Date().toISOString(),
-    totalSent: (campaign.totalSent || 0) + sentCount,
-  });
-
-  return { sent: sentCount, failed: failedCount };
+  // Return results without writing to disk — caller handles persistence
+  return { sent: sentCount, failed: failedCount, results };
 }
 
 const scheduledJobs = new Map();

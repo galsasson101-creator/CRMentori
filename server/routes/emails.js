@@ -139,26 +139,11 @@ router.post('/campaigns', async (req, res, next) => {
       totalSent: 0,
     });
 
-    if (scheduleType === 'now') {
-      try {
-        const result = await executeCampaign(campaign);
-        campaignRepo.update(campaign.id, {
-          status: 'completed',
-          lastRun: new Date().toISOString(),
-        });
-        console.log(`Campaign "${campaign.name}" completed: ${result.sent} sent, ${result.failed} failed`);
-        return res.status(201).json({ ...campaign, status: 'completed', totalSent: result.sent });
-      } catch (err) {
-        campaignRepo.update(campaign.id, { status: 'failed' });
-        console.error(`Campaign "${campaign.name}" failed:`, err.message);
-        return res.status(500).json({ error: `Campaign failed: ${err.message}` });
-      }
-    }
-
     if (scheduleType === 'scheduled') {
       scheduleCampaign(campaign);
     }
 
+    // For 'now' campaigns, client should call /campaigns/:id/run after creation
     res.status(201).json(campaign);
   } catch (err) {
     next(err);
@@ -193,16 +178,31 @@ router.post('/campaigns/:id/run', async (req, res, next) => {
 
     try {
       const result = await executeCampaign(campaign);
+
+      // Send HTTP response BEFORE writing to disk (file writes trigger nodemon restart)
+      res.json({ message: `Campaign "${campaign.name}" sent: ${result.sent} sent, ${result.failed} failed` });
+
+      // Now persist results to disk — if nodemon restarts here, that's OK, response is already sent
+      for (const r of result.results) {
+        emailLogRepo.create({
+          ...r,
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          type: 'campaign',
+        });
+      }
       campaignRepo.update(campaign.id, {
         status: 'completed',
         lastRun: new Date().toISOString(),
+        totalSent: (campaign.totalSent || 0) + result.sent,
       });
       console.log(`Campaign "${campaign.name}" completed: ${result.sent} sent, ${result.failed} failed`);
-      res.json({ message: `Campaign "${campaign.name}" sent: ${result.sent} sent, ${result.failed} failed` });
     } catch (err) {
-      campaignRepo.update(campaign.id, { status: 'failed' });
       console.error(`Campaign "${campaign.name}" failed:`, err.message);
-      res.status(500).json({ error: `Campaign failed: ${err.message}` });
+      if (!res.headersSent) {
+        res.status(500).json({ error: `Campaign failed: ${err.message}` });
+      }
+      try { campaignRepo.update(campaign.id, { status: 'failed' }); } catch {}
     }
   } catch (err) {
     next(err);
