@@ -93,11 +93,28 @@ function scheduleCampaign(campaign) {
     return;
   }
 
-  const job = cron.schedule(campaign.cronExpression, () => {
+  const job = cron.schedule(campaign.cronExpression, async () => {
     console.log(`Running scheduled campaign: ${campaign.name}`);
-    executeCampaign(campaign).catch(err => {
+    try {
+      const result = await executeCampaign(campaign);
+      // Persist email logs for tracking
+      for (const r of result.results) {
+        emailLogRepo.create({
+          id: r.emailLogId, to: r.to, subject: r.subject,
+          campaignId: campaign.id, campaignName: campaign.name,
+          type: 'campaign', status: r.status, error: r.error || undefined,
+          sentAt: r.status === 'sent' ? new Date().toISOString() : undefined,
+          opens: [], openCount: 0, clicks: [], clickCount: 0,
+        });
+      }
+      campaignRepo.update(campaign.id, {
+        lastRun: new Date().toISOString(),
+        totalSent: (campaign.totalSent || 0) + result.sent,
+      });
+      console.log(`Scheduled campaign "${campaign.name}": ${result.sent} sent, ${result.failed} failed`);
+    } catch (err) {
       console.error(`Campaign "${campaign.name}" failed:`, err.message);
-    });
+    }
   });
 
   scheduledJobs.set(campaign.id, job);

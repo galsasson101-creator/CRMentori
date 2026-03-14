@@ -97,9 +97,14 @@ router.post('/send-bulk', async (req, res, next) => {
 });
 
 // ── Email Logs ──
-router.get('/logs', (req, res) => {
-  const limit = parseInt(req.query.limit, 10) || 50;
-  res.json(emailLogRepo.getRecent(limit));
+router.get('/logs', async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const logs = await emailLogRepo.getRecentWithTracking(limit);
+    res.json(logs);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── Templates CRUD ──
@@ -207,11 +212,12 @@ router.delete('/campaigns/:id', (req, res) => {
 });
 
 // ── Campaign stats ──
-router.get('/campaigns/:id/stats', (req, res) => {
+router.get('/campaigns/:id/stats', async (req, res, next) => {
+  try {
   const campaign = campaignRepo.getById(req.params.id);
   if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 
-  const logs = emailLogRepo.getByCampaignId(req.params.id);
+  const logs = await emailLogRepo.getByCampaignIdWithTracking(req.params.id);
   const totalSent = logs.filter(l => l.status === 'sent').length;
   const uniqueOpens = logs.filter(l => (l.opens || []).length > 0).length;
   const totalOpens = logs.reduce((sum, l) => sum + (l.openCount || 0), 0);
@@ -221,6 +227,9 @@ router.get('/campaigns/:id/stats', (req, res) => {
   const clickRate = totalSent > 0 ? Math.round((uniqueClicks / totalSent) * 100) : 0;
 
   res.json({ totalSent, uniqueOpens, totalOpens, uniqueClicks, totalClicks, openRate, clickRate });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ── Run campaign manually ──

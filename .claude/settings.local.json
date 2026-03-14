@@ -19,7 +19,14 @@
       "Bash(node -e \"\nrequire\\('dotenv'\\).config\\(\\);\nconst emailService = require\\('./services/emailService'\\);\n\nasync function test\\(\\) {\n  const r1 = await emailService.sendEmail\\({\n    to: 'guytom98@gmail.com',\n    subject: 'CRMentori Email Test',\n    html: '<h1>Hello from CRMentori!</h1><p>Your email automation is working. This is a test email sent via Microsoft Graph API from info@mentori.app.</p>',\n  }\\);\n  console.log\\('Email 1:', JSON.stringify\\(r1, null, 2\\)\\);\n\n  const r2 = await emailService.sendEmail\\({\n    to: 'galsasson101@gmail.com',\n    subject: 'CRMentori Email Test',\n    html: '<h1>Hello from CRMentori!</h1><p>Your email automation is working. This is a test email sent via Microsoft Graph API from info@mentori.app.</p>',\n  }\\);\n  console.log\\('Email 2:', JSON.stringify\\(r2, null, 2\\)\\);\n}\n\ntest\\(\\).catch\\(err => console.error\\('Error:', err.message\\)\\);\n\")",
       "Bash(cd /c/Users/tombo/Desktop/CRMentori/client && npx vite build 2>&1 | tail -20)",
       "Bash(cd \"C:/Users/tombo/Desktop/CRMentori/server\" && node -e \"\ntry {\n  require\\('./templates/brandedEmail'\\);\n  console.log\\('brandedEmail: OK'\\);\n} catch\\(e\\) { console.error\\('brandedEmail:', e.message\\); }\n\ntry {\n  require\\('./dal/CampaignRepository'\\);\n  console.log\\('CampaignRepository: OK'\\);\n} catch\\(e\\) { console.error\\('CampaignRepository:', e.message\\); }\n\ntry {\n  require\\('./services/campaignRunner'\\);\n  console.log\\('campaignRunner: OK'\\);\n} catch\\(e\\) { console.error\\('campaignRunner:', e.message\\); }\n\ntry {\n  require\\('./routes/emails'\\);\n  console.log\\('emails route: OK'\\);\n} catch\\(e\\) { console.error\\('emails route:', e.message\\); }\n\")",
-      "Bash(cd \"C:/Users/tombo/Desktop/CRMentori/server\" && node -e \"require\\('./routes/emails'\\); require\\('./services/campaignRunner'\\); console.log\\('All imports OK after cleanup'\\);\")"
+      "Bash(cd \"C:/Users/tombo/Desktop/CRMentori/server\" && node -e \"require\\('./routes/emails'\\); require\\('./services/campaignRunner'\\); console.log\\('All imports OK after cleanup'\\);\")",
+      "Bash(git add:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "Bash(git merge:*)"
     ]
   }
 }

@@ -1,15 +1,17 @@
 /**
  * Email tracking helper — open pixel injection and click URL wrapping.
+ * Tracking endpoints are hosted on the deployed limudy server (Render).
  */
 
 const BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:3001';
+const TRACKING_PATH = '/api/crm-tracking';
 
 function getTrackingPixelHtml(emailLogId) {
-  return `<img src="${BASE_URL}/api/tracking/pixel/${emailLogId}" width="1" height="1" style="display:block;width:1px;height:1px;border:0;" alt="" />`;
+  return `<img src="${BASE_URL}${TRACKING_PATH}/pixel/${emailLogId}" width="1" height="1" style="display:block;width:1px;height:1px;border:0;" alt="" />`;
 }
 
 function wrapUrlForTracking(originalUrl, emailLogId) {
-  return `${BASE_URL}/api/tracking/click/${emailLogId}?url=${encodeURIComponent(originalUrl)}`;
+  return `${BASE_URL}${TRACKING_PATH}/click/${emailLogId}?url=${encodeURIComponent(originalUrl)}`;
 }
 
 function injectTrackingPixel(html, emailLogId) {
@@ -21,10 +23,10 @@ function injectTrackingPixel(html, emailLogId) {
 }
 
 function wrapAllLinks(html, emailLogId) {
-  const trackingPixelPattern = `/api/tracking/`;
+  const trackingPattern = `${TRACKING_PATH}/`;
   return html.replace(/href="(https?:\/\/[^"]+)"/g, (match, url) => {
     // Skip unsubscribe and tracking URLs
-    if (url.includes('{{unsubscribe_url}}') || url.includes(trackingPixelPattern)) {
+    if (url.includes('{{unsubscribe_url}}') || url.includes(trackingPattern)) {
       return match;
     }
     return `href="${wrapUrlForTracking(url, emailLogId)}"`;
