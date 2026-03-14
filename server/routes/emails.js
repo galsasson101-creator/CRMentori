@@ -36,21 +36,18 @@ router.post('/send', async (req, res, next) => {
     if (!to || !subject || !html) {
       return res.status(400).json({ error: 'to, subject, and html are required' });
     }
-    // Generate tracking ID upfront (no file write yet — avoids nodemon restart)
     const emailLogId = uuidv4();
     let trackedHtml = wrapAllLinks(html, emailLogId);
     trackedHtml = injectTracking(trackedHtml, emailLogId);
 
     const result = await emailService.sendEmail({ to, subject, html: trackedHtml, text });
 
-    // Send response BEFORE writing to disk (file write may trigger nodemon restart)
     res.json({ ...result, emailLogId });
 
-    // Now persist the log — restart is OK, response already sent
-    emailLogRepo.create({
+    // Persist to MongoDB
+    await emailLogRepo.create({
       id: emailLogId, to, subject, type: 'manual', status: 'sent',
       sentAt: new Date().toISOString(),
-      opens: [], openCount: 0, clicks: [], clickCount: 0,
     });
   } catch (err) {
     console.error('Email send error:', err.message);
@@ -79,16 +76,14 @@ router.post('/send-bulk', async (req, res, next) => {
       }
     }
 
-    // Send response BEFORE writing to disk
     res.json({ sent: results.filter(r => r.status === 'sent').length, failed: results.filter(r => r.status === 'failed').length, results });
 
-    // Now persist logs
+    // Persist to MongoDB
     for (const r of results) {
-      emailLogRepo.create({
+      await emailLogRepo.create({
         id: r.emailLogId, to: r.to, subject: r.subject, type: 'bulk',
         status: r.status, error: r.error || undefined,
         sentAt: r.status === 'sent' ? new Date().toISOString() : undefined,
-        opens: [], openCount: 0, clicks: [], clickCount: 0,
       });
     }
   } catch (err) {
@@ -184,7 +179,6 @@ router.post('/campaigns', async (req, res, next) => {
       scheduleCampaign(campaign);
     }
 
-    // For 'now' campaigns, client should call /campaigns/:id/run after creation
     res.status(201).json(campaign);
   } catch (err) {
     next(err);
@@ -195,7 +189,6 @@ router.put('/campaigns/:id', (req, res) => {
   const campaign = campaignRepo.update(req.params.id, req.body);
   if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 
-  // Re-schedule if it's a scheduled campaign
   if (campaign.scheduleType === 'scheduled' && campaign.status === 'active') {
     scheduleCampaign(campaign);
   } else {
@@ -214,19 +207,19 @@ router.delete('/campaigns/:id', (req, res) => {
 // ── Campaign stats ──
 router.get('/campaigns/:id/stats', async (req, res, next) => {
   try {
-  const campaign = campaignRepo.getById(req.params.id);
-  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    const campaign = campaignRepo.getById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
 
-  const logs = await emailLogRepo.getByCampaignIdWithTracking(req.params.id);
-  const totalSent = logs.filter(l => l.status === 'sent').length;
-  const uniqueOpens = logs.filter(l => (l.opens || []).length > 0).length;
-  const totalOpens = logs.reduce((sum, l) => sum + (l.openCount || 0), 0);
-  const uniqueClicks = logs.filter(l => (l.clicks || []).length > 0).length;
-  const totalClicks = logs.reduce((sum, l) => sum + (l.clickCount || 0), 0);
-  const openRate = totalSent > 0 ? Math.round((uniqueOpens / totalSent) * 100) : 0;
-  const clickRate = totalSent > 0 ? Math.round((uniqueClicks / totalSent) * 100) : 0;
+    const logs = await emailLogRepo.getByCampaignIdWithTracking(req.params.id);
+    const totalSent = logs.filter(l => l.status === 'sent').length;
+    const uniqueOpens = logs.filter(l => (l.opens || []).length > 0).length;
+    const totalOpens = logs.reduce((sum, l) => sum + (l.openCount || 0), 0);
+    const uniqueClicks = logs.filter(l => (l.clicks || []).length > 0).length;
+    const totalClicks = logs.reduce((sum, l) => sum + (l.clickCount || 0), 0);
+    const openRate = totalSent > 0 ? Math.round((uniqueOpens / totalSent) * 100) : 0;
+    const clickRate = totalSent > 0 ? Math.round((uniqueClicks / totalSent) * 100) : 0;
 
-  res.json({ totalSent, uniqueOpens, totalOpens, uniqueClicks, totalClicks, openRate, clickRate });
+    res.json({ totalSent, uniqueOpens, totalOpens, uniqueClicks, totalClicks, openRate, clickRate });
   } catch (err) {
     next(err);
   }
@@ -241,17 +234,15 @@ router.post('/campaigns/:id/run', async (req, res, next) => {
     try {
       const result = await executeCampaign(campaign);
 
-      // Send HTTP response BEFORE writing to disk (file writes trigger nodemon restart)
       res.json({ message: `Campaign "${campaign.name}" sent: ${result.sent} sent, ${result.failed} failed` });
 
-      // Persist logs after response is sent
+      // Persist logs to MongoDB
       for (const r of result.results) {
-        emailLogRepo.create({
+        await emailLogRepo.create({
           id: r.emailLogId, to: r.to, subject: r.subject,
           campaignId: campaign.id, campaignName: campaign.name,
           type: 'campaign', status: r.status, error: r.error || undefined,
           sentAt: r.status === 'sent' ? new Date().toISOString() : undefined,
-          opens: [], openCount: 0, clicks: [], clickCount: 0,
         });
       }
       campaignRepo.update(campaign.id, {

@@ -1,136 +1,142 @@
-const BaseRepository = require('./BaseRepository');
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 
-class EmailLogRepository extends BaseRepository {
-  constructor() {
-    super('data/emailLogs.json');
+class EmailLogRepository {
+  _getCollection() {
+    return mongoose.connection.db.collection('crm_email_logs');
   }
 
-  getByRecipient(email) {
-    return this.query(log => log.to === email);
+  _getTrackingCollection() {
+    return mongoose.connection.db.collection('crm_email_tracking');
   }
 
-  getByAutomation(automationId) {
-    return this.query(log => log.automationId === automationId);
+  async create(data) {
+    const now = new Date().toISOString();
+    const doc = {
+      id: data.id || uuidv4(),
+      ...data,
+      opens: data.opens || [],
+      openCount: data.openCount || 0,
+      clicks: data.clicks || [],
+      clickCount: data.clickCount || 0,
+      createdAt: data.createdAt || now,
+      updatedAt: now,
+    };
+    await this._getCollection().insertOne(doc);
+    return doc;
   }
 
-  getRecent(limit = 50) {
-    const all = this.getAll();
-    return all.sort((a, b) => new Date(b.sentAt || b.createdAt) - new Date(a.sentAt || a.createdAt)).slice(0, limit);
+  async getAll() {
+    return await this._getCollection().find({}).toArray();
   }
 
-  getByCampaignId(campaignId) {
-    return this.query(log => log.campaignId === campaignId);
+  async getById(id) {
+    return await this._getCollection().findOne({ id });
   }
 
-  // Kept for backward compatibility (local JSON recording)
-  recordOpen(emailLogId) {
-    const items = this._readData();
-    const index = items.findIndex(item => item.id === emailLogId);
-    if (index === -1) return null;
-    if (!items[index].opens) items[index].opens = [];
-    items[index].opens.push(new Date().toISOString());
-    items[index].openCount = items[index].opens.length;
-    items[index].updatedAt = new Date().toISOString();
-    this._writeData(items);
-    return items[index];
+  async getByRecipient(email) {
+    return await this._getCollection().find({ to: email }).toArray();
   }
 
-  recordClick(emailLogId, url) {
-    const items = this._readData();
-    const index = items.findIndex(item => item.id === emailLogId);
-    if (index === -1) return null;
-    if (!items[index].clicks) items[index].clicks = [];
-    items[index].clicks.push({ url, timestamp: new Date().toISOString() });
-    items[index].clickCount = items[index].clicks.length;
-    items[index].updatedAt = new Date().toISOString();
-    this._writeData(items);
-    return items[index];
+  async getByAutomation(automationId) {
+    return await this._getCollection().find({ automationId }).toArray();
+  }
+
+  async getRecent(limit = 50) {
+    return await this._getCollection()
+      .find({})
+      .sort({ sentAt: -1, createdAt: -1 })
+      .limit(limit)
+      .toArray();
+  }
+
+  async getByCampaignId(campaignId) {
+    return await this._getCollection().find({ campaignId }).toArray();
+  }
+
+  async update(id, data) {
+    const now = new Date().toISOString();
+    const result = await this._getCollection().findOneAndUpdate(
+      { id },
+      { $set: { ...data, updatedAt: now } },
+      { returnDocument: 'after' }
+    );
+    return result;
+  }
+
+  async delete(id) {
+    const result = await this._getCollection().deleteOne({ id });
+    return result.deletedCount > 0;
   }
 
   /**
-   * Sync tracking data from MongoDB (crm_email_tracking collection)
-   * into local email log entries. Called on-demand when stats are needed.
+   * Merge tracking events from crm_email_tracking (written by limudy/Render)
+   * into the email log documents.
    */
-  async syncTrackingFromMongo(emailLogIds) {
-    try {
-      const db = mongoose.connection.db;
-      if (!db) return;
+  async syncTrackingForLogs(logs) {
+    if (!logs || logs.length === 0) return logs;
 
-      const trackingEvents = await db.collection('crm_email_tracking')
-        .find({ emailLogId: { $in: emailLogIds } })
-        .toArray();
+    const ids = logs.map(l => l.id);
+    const trackingEvents = await this._getTrackingCollection()
+      .find({ emailLogId: { $in: ids } })
+      .toArray();
 
-      if (trackingEvents.length === 0) return;
+    if (trackingEvents.length === 0) return logs;
 
-      const items = this._readData();
+    // Group events by emailLogId
+    const eventsByLog = {};
+    for (const event of trackingEvents) {
+      if (!eventsByLog[event.emailLogId]) eventsByLog[event.emailLogId] = [];
+      eventsByLog[event.emailLogId].push(event);
+    }
+
+    // Merge into logs and update MongoDB
+    for (const log of logs) {
+      const events = eventsByLog[log.id];
+      if (!events) continue;
+
       let changed = false;
+      if (!log.opens) log.opens = [];
+      if (!log.clicks) log.clicks = [];
 
-      for (const event of trackingEvents) {
-        const index = items.findIndex(item => item.id === event.emailLogId);
-        if (index === -1) continue;
-
-        const log = items[index];
+      for (const event of events) {
         const eventTime = new Date(event.timestamp).toISOString();
-
         if (event.type === 'open') {
-          if (!log.opens) log.opens = [];
-          // Avoid duplicates by checking if this exact timestamp already exists
           if (!log.opens.includes(eventTime)) {
             log.opens.push(eventTime);
-            log.openCount = log.opens.length;
             changed = true;
           }
         } else if (event.type === 'click') {
-          if (!log.clicks) log.clicks = [];
-          const alreadyExists = log.clicks.some(
-            c => c.url === event.url && c.timestamp === eventTime
-          );
-          if (!alreadyExists) {
+          const exists = log.clicks.some(c => c.url === event.url && c.timestamp === eventTime);
+          if (!exists) {
             log.clicks.push({ url: event.url, timestamp: eventTime });
-            log.clickCount = log.clicks.length;
             changed = true;
           }
-        }
-
-        if (changed) {
-          log.updatedAt = new Date().toISOString();
         }
       }
 
       if (changed) {
-        this._writeData(items);
+        log.openCount = log.opens.length;
+        log.clickCount = log.clicks.length;
+        log.updatedAt = new Date().toISOString();
+        await this._getCollection().updateOne(
+          { id: log.id },
+          { $set: { opens: log.opens, openCount: log.openCount, clicks: log.clicks, clickCount: log.clickCount, updatedAt: log.updatedAt } }
+        );
       }
-    } catch (err) {
-      console.error('Error syncing tracking from MongoDB:', err.message);
     }
-  }
 
-  /**
-   * Get campaign logs with fresh tracking data from MongoDB.
-   */
-  async getByCampaignIdWithTracking(campaignId) {
-    const logs = this.getByCampaignId(campaignId);
-    if (logs.length > 0) {
-      const ids = logs.map(l => l.id);
-      await this.syncTrackingFromMongo(ids);
-      // Re-read after sync
-      return this.getByCampaignId(campaignId);
-    }
     return logs;
   }
 
-  /**
-   * Get recent logs with fresh tracking data from MongoDB.
-   */
   async getRecentWithTracking(limit = 50) {
-    const logs = this.getRecent(limit);
-    if (logs.length > 0) {
-      const ids = logs.map(l => l.id);
-      await this.syncTrackingFromMongo(ids);
-      return this.getRecent(limit);
-    }
-    return logs;
+    const logs = await this.getRecent(limit);
+    return await this.syncTrackingForLogs(logs);
+  }
+
+  async getByCampaignIdWithTracking(campaignId) {
+    const logs = await this.getByCampaignId(campaignId);
+    return await this.syncTrackingForLogs(logs);
   }
 }
 

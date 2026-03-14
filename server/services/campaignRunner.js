@@ -97,14 +97,13 @@ function scheduleCampaign(campaign) {
     console.log(`Running scheduled campaign: ${campaign.name}`);
     try {
       const result = await executeCampaign(campaign);
-      // Persist email logs for tracking
+      // Persist email logs to MongoDB
       for (const r of result.results) {
-        emailLogRepo.create({
+        await emailLogRepo.create({
           id: r.emailLogId, to: r.to, subject: r.subject,
           campaignId: campaign.id, campaignName: campaign.name,
           type: 'campaign', status: r.status, error: r.error || undefined,
           sentAt: r.status === 'sent' ? new Date().toISOString() : undefined,
-          opens: [], openCount: 0, clicks: [], clickCount: 0,
         });
       }
       campaignRepo.update(campaign.id, {
