@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const { v4: uuidv4 } = require('uuid');
 const emailService = require('../services/emailService');
 const emailLogRepo = require('../dal/EmailLogRepository');
 const campaignRepo = require('../dal/CampaignRepository');
 const templateRepo = require('../dal/EmailTemplateRepository');
 const { executeCampaign, scheduleCampaign, removeSchedule } = require('../services/campaignRunner');
-const { wrapInBrandedTemplate } = require('../templates/brandedEmail');
+const { wrapInBrandedTemplate, injectTracking, wrapAllLinks } = require('../templates/brandedEmail');
 const brandSettingsRepo = require('../dal/BrandSettingsRepository');
 
 // ── Brand Settings ──
@@ -35,10 +36,24 @@ router.post('/send', async (req, res, next) => {
     if (!to || !subject || !html) {
       return res.status(400).json({ error: 'to, subject, and html are required' });
     }
-    const result = await emailService.sendEmail({ to, subject, html, text });
-    emailLogRepo.create({ ...result, type: 'manual', status: 'sent' });
-    res.json(result);
+    // Generate tracking ID upfront (no file write yet — avoids nodemon restart)
+    const emailLogId = uuidv4();
+    let trackedHtml = wrapAllLinks(html, emailLogId);
+    trackedHtml = injectTracking(trackedHtml, emailLogId);
+
+    const result = await emailService.sendEmail({ to, subject, html: trackedHtml, text });
+
+    // Send response BEFORE writing to disk (file write may trigger nodemon restart)
+    res.json({ ...result, emailLogId });
+
+    // Now persist the log — restart is OK, response already sent
+    emailLogRepo.create({
+      id: emailLogId, to, subject, type: 'manual', status: 'sent',
+      sentAt: new Date().toISOString(),
+      opens: [], openCount: 0, clicks: [], clickCount: 0,
+    });
   } catch (err) {
+    console.error('Email send error:', err.message);
     next(err);
   }
 });
@@ -50,11 +65,32 @@ router.post('/send-bulk', async (req, res, next) => {
     if (!recipients || !subject || !html) {
       return res.status(400).json({ error: 'recipients, subject, and html are required' });
     }
-    const results = await emailService.sendBulkEmails(recipients, { subject, html, text });
-    for (const result of results) {
-      emailLogRepo.create({ ...result, type: 'bulk' });
+    const results = [];
+    for (const recipient of recipients) {
+      const to = typeof recipient === 'string' ? recipient : recipient.email;
+      const emailLogId = uuidv4();
+      let trackedHtml = wrapAllLinks(html, emailLogId);
+      trackedHtml = injectTracking(trackedHtml, emailLogId);
+      try {
+        await emailService.sendEmail({ to, subject, html: trackedHtml, text });
+        results.push({ to, subject, status: 'sent', emailLogId });
+      } catch (err) {
+        results.push({ to, subject, status: 'failed', error: err.message, emailLogId });
+      }
     }
+
+    // Send response BEFORE writing to disk
     res.json({ sent: results.filter(r => r.status === 'sent').length, failed: results.filter(r => r.status === 'failed').length, results });
+
+    // Now persist logs
+    for (const r of results) {
+      emailLogRepo.create({
+        id: r.emailLogId, to: r.to, subject: r.subject, type: 'bulk',
+        status: r.status, error: r.error || undefined,
+        sentAt: r.status === 'sent' ? new Date().toISOString() : undefined,
+        opens: [], openCount: 0, clicks: [], clickCount: 0,
+      });
+    }
   } catch (err) {
     next(err);
   }
@@ -170,6 +206,23 @@ router.delete('/campaigns/:id', (req, res) => {
   res.status(204).end();
 });
 
+// ── Campaign stats ──
+router.get('/campaigns/:id/stats', (req, res) => {
+  const campaign = campaignRepo.getById(req.params.id);
+  if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+
+  const logs = emailLogRepo.getByCampaignId(req.params.id);
+  const totalSent = logs.filter(l => l.status === 'sent').length;
+  const uniqueOpens = logs.filter(l => (l.opens || []).length > 0).length;
+  const totalOpens = logs.reduce((sum, l) => sum + (l.openCount || 0), 0);
+  const uniqueClicks = logs.filter(l => (l.clicks || []).length > 0).length;
+  const totalClicks = logs.reduce((sum, l) => sum + (l.clickCount || 0), 0);
+  const openRate = totalSent > 0 ? Math.round((uniqueOpens / totalSent) * 100) : 0;
+  const clickRate = totalSent > 0 ? Math.round((uniqueClicks / totalSent) * 100) : 0;
+
+  res.json({ totalSent, uniqueOpens, totalOpens, uniqueClicks, totalClicks, openRate, clickRate });
+});
+
 // ── Run campaign manually ──
 router.post('/campaigns/:id/run', async (req, res, next) => {
   try {
@@ -182,13 +235,14 @@ router.post('/campaigns/:id/run', async (req, res, next) => {
       // Send HTTP response BEFORE writing to disk (file writes trigger nodemon restart)
       res.json({ message: `Campaign "${campaign.name}" sent: ${result.sent} sent, ${result.failed} failed` });
 
-      // Now persist results to disk — if nodemon restarts here, that's OK, response is already sent
+      // Persist logs after response is sent
       for (const r of result.results) {
         emailLogRepo.create({
-          ...r,
-          campaignId: campaign.id,
-          campaignName: campaign.name,
-          type: 'campaign',
+          id: r.emailLogId, to: r.to, subject: r.subject,
+          campaignId: campaign.id, campaignName: campaign.name,
+          type: 'campaign', status: r.status, error: r.error || undefined,
+          sentAt: r.status === 'sent' ? new Date().toISOString() : undefined,
+          opens: [], openCount: 0, clicks: [], clickCount: 0,
         });
       }
       campaignRepo.update(campaign.id, {

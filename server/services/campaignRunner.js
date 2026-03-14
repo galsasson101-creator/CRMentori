@@ -1,9 +1,10 @@
 const cron = require('node-cron');
+const { v4: uuidv4 } = require('uuid');
 const campaignRepo = require('../dal/CampaignRepository');
 const emailLogRepo = require('../dal/EmailLogRepository');
 const emailService = require('./emailService');
 const UserRepository = require('../dal/UserRepository');
-const { wrapInBrandedTemplate } = require('../templates/brandedEmail');
+const { wrapInBrandedTemplate, injectTracking, wrapAllLinks } = require('../templates/brandedEmail');
 
 const userRepo = new UserRepository();
 
@@ -43,17 +44,34 @@ async function executeCampaign(campaign) {
   if (recipients.length === 0) return { sent: 0, failed: 0, results: [] };
 
   const brandedHtml = wrapInBrandedTemplate(campaign.htmlBody || '');
+  const results = [];
 
-  const results = await emailService.sendBulkEmails(recipients, {
-    subject: campaign.subject,
-    html: brandedHtml,
-    text: campaign.textBody,
-  });
+  for (const recipient of recipients) {
+    const to = recipient.email;
+    // Generate tracking ID upfront (no file write — avoids nodemon restart)
+    const emailLogId = uuidv4();
+
+    // Inject tracking pixel and wrap links
+    let trackedHtml = wrapAllLinks(brandedHtml, emailLogId);
+    trackedHtml = injectTracking(trackedHtml, emailLogId);
+
+    try {
+      await emailService.sendEmail({
+        to,
+        subject: campaign.subject,
+        html: trackedHtml,
+        text: campaign.textBody,
+      });
+      results.push({ to, subject: campaign.subject, status: 'sent', emailLogId });
+    } catch (err) {
+      results.push({ to, subject: campaign.subject, status: 'failed', error: err.message, emailLogId });
+    }
+  }
 
   const sentCount = results.filter(r => r.status === 'sent').length;
   const failedCount = results.filter(r => r.status === 'failed').length;
 
-  // Return results without writing to disk — caller handles persistence
+  // Return results — caller handles persistence (after response is sent)
   return { sent: sentCount, failed: failedCount, results };
 }
 

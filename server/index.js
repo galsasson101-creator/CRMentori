@@ -13,6 +13,7 @@ const commsRouter = require('./routes/comms');
 const activitiesRouter = require('./routes/activities');
 const dashboardRouter = require('./routes/dashboard');
 const emailsRouter = require('./routes/emails');
+const trackingRouter = require('./routes/tracking');
 const { initScheduledCampaigns } = require('./services/campaignRunner');
 
 const app = express();
@@ -32,6 +33,7 @@ app.use('/api/comms', commsRouter);
 app.use('/api/activities', activitiesRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/emails', emailsRouter);
+app.use('/api/tracking', trackingRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

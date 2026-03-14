@@ -5,6 +5,7 @@
  */
 
 const brandSettingsRepo = require('../dal/BrandSettingsRepository');
+const trackingHelper = require('../services/trackingHelper');
 
 const FONT_STACK = "'Heebo','Arial Hebrew','Tahoma',Arial,sans-serif";
 
@@ -108,7 +109,13 @@ function buildCtaButton(text, url, options = {}) {
     padding = '14px 32px',
     align = 'center',
     fullWidth = false,
+    emailLogId = null,
   } = options;
+
+  // Wrap URL for click tracking if emailLogId is provided
+  if (emailLogId) {
+    url = trackingHelper.wrapUrlForTracking(url, emailLogId);
+  }
 
   const widthAttr = fullWidth ? 'width="100%"' : '';
   const aWidth = fullWidth ? 'width:100%;' : '';
@@ -297,4 +304,12 @@ function wrapInBrandedTemplate(contentHtml, settings = null) {
 </html>`;
 }
 
-module.exports = { wrapInBrandedTemplate, buildCtaButton, buildAppStoreBadge };
+function injectTracking(html, emailLogId) {
+  return trackingHelper.injectTrackingPixel(html, emailLogId);
+}
+
+function wrapAllLinks(html, emailLogId) {
+  return trackingHelper.wrapAllLinks(html, emailLogId);
+}
+
+module.exports = { wrapInBrandedTemplate, buildCtaButton, buildAppStoreBadge, injectTracking, wrapAllLinks };

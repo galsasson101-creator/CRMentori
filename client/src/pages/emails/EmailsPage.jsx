@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, Zap, FileText, History, Settings, Users,
   Clock, MailCheck, MailX, RefreshCw, ChevronDown, ChevronUp, Eye,
   Calendar, Filter, UserCheck, RotateCcw, Palette, Image, Globe, Share2,
-  Smartphone, Monitor,
+  Smartphone, Monitor, MousePointerClick,
 } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
 import * as api from '../../lib/api.js';
@@ -48,6 +48,11 @@ export default function EmailsPage() {
   const totalFailed = (logs || []).filter(l => l.status === 'failed').length;
   const activeCampaigns = (campaigns || []).filter(c => c.status === 'active').length;
 
+  const openedLogs = (logs || []).filter(l => (l.openCount || 0) > 0).length;
+  const clickedLogs = (logs || []).filter(l => (l.clickCount || 0) > 0).length;
+  const openRate = totalSent > 0 ? Math.round((openedLogs / totalSent) * 100) : 0;
+  const clickRate = totalSent > 0 ? Math.round((clickedLogs / totalSent) * 100) : 0;
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -59,11 +64,13 @@ export default function EmailsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiCard icon={MailCheck} label="Emails Sent" value={totalSent} accent="#00c875" />
         <KpiCard icon={MailX} label="Failed" value={totalFailed} accent="#e2445c" />
         <KpiCard icon={Zap} label="Active Campaigns" value={activeCampaigns} accent="#a25ddc" />
         <KpiCard icon={Send} label="Total Campaigns" value={(campaigns || []).length} accent="#0086c0" />
+        <KpiCard icon={Eye} label="Open Rate" value={`${openRate}%`} accent="#fdab3d" />
+        <KpiCard icon={MousePointerClick} label="Click Rate" value={`${clickRate}%`} accent="#00c875" />
       </div>
 
       {/* Tabs */}
@@ -113,6 +120,21 @@ function KpiCard({ icon: Icon, label, value, accent }) {
 }
 
 // ── Campaigns Tab (Unified) ──
+function CampaignStatsBadges({ campaignId }) {
+  const { data: stats } = useApi(useCallback(() => api.get(`/emails/campaigns/${campaignId}/stats`), [campaignId]));
+  if (!stats || stats.totalSent === 0) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+        <Eye size={12} /> {stats.openRate}% opens
+      </span>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+        <MousePointerClick size={12} /> {stats.clickRate}% clicks
+      </span>
+    </div>
+  );
+}
+
 function CampaignsTab() {
   const { data, loading, refetch } = useApi(useCallback(() => api.get('/emails/campaigns'), []));
   const [showForm, setShowForm] = useState(false);
@@ -233,6 +255,11 @@ function CampaignsTab() {
                           <span>Last: {formatRelativeDate(campaign.lastRun)}</span>
                         )}
                       </div>
+                      {campaign.status === 'completed' && (
+                        <div className="mt-2">
+                          <CampaignStatsBadges campaignId={campaign.id} />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -962,10 +989,17 @@ function HistoryTab() {
   const [filter, setFilter] = useState('all');
   const logs = data || [];
 
-  const filtered = filter === 'all' ? logs : logs.filter(l => l.status === filter);
+  const filtered = useMemo(() => {
+    if (filter === 'all') return logs;
+    if (filter === 'opened') return logs.filter(l => (l.openCount || 0) > 0);
+    if (filter === 'clicked') return logs.filter(l => (l.clickCount || 0) > 0);
+    return logs.filter(l => l.status === filter);
+  }, [logs, filter]);
 
   const sentCount = logs.filter(l => l.status === 'sent').length;
   const failedCount = logs.filter(l => l.status === 'failed').length;
+  const openedCount = logs.filter(l => (l.openCount || 0) > 0).length;
+  const clickedCount = logs.filter(l => (l.clickCount || 0) > 0).length;
 
   if (loading) {
     return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -981,6 +1015,8 @@ function HistoryTab() {
               { value: 'all', label: `All (${logs.length})` },
               { value: 'sent', label: `Sent (${sentCount})` },
               { value: 'failed', label: `Failed (${failedCount})` },
+              { value: 'opened', label: `Opened (${openedCount})` },
+              { value: 'clicked', label: `Clicked (${clickedCount})` },
             ].map(f => (
               <button
                 key={f.value}
@@ -1014,6 +1050,8 @@ function HistoryTab() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Campaign</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Opens</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Clicks</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sent</th>
                 </tr>
               </thead>
@@ -1040,6 +1078,16 @@ function HistoryTab() {
                         ? <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400"><CheckCircle2 size={14} /> Sent</span>
                         : <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400"><XCircle size={14} /> Failed</span>
                       }
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`flex items-center gap-1 text-sm ${(log.openCount || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                        <Eye size={14} /> {log.openCount || 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`flex items-center gap-1 text-sm ${(log.clickCount || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                        <MousePointerClick size={14} /> {log.clickCount || 0}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{formatRelativeDate(log.sentAt || log.createdAt)}</td>
                   </tr>
