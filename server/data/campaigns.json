@@ -1,24 +1,154 @@
 [
   {
-    "id": "8cf48f50-4543-4cea-b2ba-bc4e82c0b981",
-    "name": "הטבה מיוחדת - לומדים חכם במלחמה",
-    "subject": "לומדים ב-1 ש\"ח עם מנטורי - הטבה חד פעמית",
-    "htmlBody": "שלום לכל תלמידים יקרים !\nאנחנו יודעים כי המצב מורכב והרבה מכם לומדים מהביתת וצוות המורים שלנו במנטורי לא רוצים להישאר אדישים למצב.\n\nלכן החלטנו לתת לכל הרשומים שלנו חודש שלם במנטורי במחיר של 1 ש\"ח בלבד ! \n\nההנחה תקפה אך ורק למי שקיבל את המייל הזה, ותפעל רק בכניסה מהקישור המצורף פה למטה.\n\nפה בשבילכם, מנטורי :)\n",
+    "id": "ef52f834-ac2a-4b0f-a6d8-72b687525a0a",
+    "name": "גרסה מוכנה למייל ",
+    "subject": "info@mentori.app",
+    "htmlBody": "<h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><h1><strong>וכל זה ב1 ש\"ח לחודש,</strong> כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</h1><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה<br><br></strong><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app\"><strong>למימוש ההטבה של - {{name}}</strong></a><strong><br></strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
     "recipientMode": "manual",
     "recipientFilter": "all",
     "recipientTier": "",
     "recipientStatus": "",
     "recipientEmails": [],
     "recipientIds": [
-      "698c79156c4b8942eca356c2",
-      "699568c1e8f204be090fa490"
+      "69b2c69be005753ea873758e",
+      "698c79156c4b8942eca356c2"
+    ],
+    "scheduleType": "now",
+    "cronExpression": "",
+    "status": "completed",
+    "enabled": true,
+    "totalSent": 4,
+    "createdAt": "2026-03-13T13:39:03.781Z",
+    "updatedAt": "2026-03-14T13:09:33.245Z",
+    "lastRun": "2026-03-14T13:09:33.245Z"
+  },
+  {
+    "id": "76bffc18-02cb-4d41-a0f3-0c167257be3e",
+    "name": "גרסה מוכנה למייל ",
+    "subject": "info@mentori.app",
+    "htmlBody": "<h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><p>וכל זה ב1 ש\"ח לחודש, כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</p><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה.<br>    <br>      </strong><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app\"><strong>למימוש ההטבה של - {{name}}</strong></a><strong><br>    </strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
+    "recipientMode": "manual",
+    "recipientFilter": "all",
+    "recipientTier": "",
+    "recipientStatus": "",
+    "recipientEmails": [],
+    "recipientIds": [
+      "69b2c69be005753ea873758e",
+      "698c79156c4b8942eca356c2"
     ],
     "scheduleType": "now",
     "cronExpression": "",
     "status": "active",
     "enabled": true,
     "totalSent": 0,
-    "createdAt": "2026-03-12T13:59:20.364Z",
-    "updatedAt": "2026-03-12T13:59:20.364Z"
+    "createdAt": "2026-03-13T13:39:11.288Z",
+    "updatedAt": "2026-03-13T13:39:11.288Z"
+  },
+  {
+    "id": "166bc898-6a4b-4de4-b644-2b1f2ec19057",
+    "name": "גרסה מוכנה למייל ",
+    "subject": "info@mentori.app",
+    "htmlBody": "<h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><p>וכל זה ב1 ש\"ח לחודש, כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</p><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה.<br>    <br>      </strong><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app\"><strong>למימוש ההטבה של - {{name}}</strong></a><strong><br>    </strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
+    "recipientMode": "manual",
+    "recipientFilter": "all",
+    "recipientTier": "",
+    "recipientStatus": "",
+    "recipientEmails": [],
+    "recipientIds": [
+      "69b2c69be005753ea873758e",
+      "698c79156c4b8942eca356c2"
+    ],
+    "scheduleType": "now",
+    "cronExpression": "",
+    "status": "active",
+    "enabled": true,
+    "totalSent": 0,
+    "createdAt": "2026-03-13T13:39:22.016Z",
+    "updatedAt": "2026-03-13T13:39:22.016Z"
+  },
+  {
+    "id": "7118be5c-87e2-48b8-8004-e04a6cde4d88",
+    "name": "test",
+    "subject": "test",
+    "htmlBody": "<p>hello</p>",
+    "recipientMode": "filter",
+    "recipientFilter": "custom",
+    "recipientEmails": "test@test.com",
+    "scheduleType": "now",
+    "status": "failed",
+    "enabled": true,
+    "totalSent": 0,
+    "createdAt": "2026-03-13T13:40:27.521Z",
+    "updatedAt": "2026-03-13T13:40:27.523Z"
+  },
+  {
+    "id": "23c9fe2c-3d3c-4c2d-b5da-afc3d54428c0",
+    "name": "test",
+    "subject": "test sub",
+    "htmlBody": "<p>hello</p>",
+    "recipientMode": "filter",
+    "recipientFilter": "all",
+    "scheduleType": "now",
+    "status": "active",
+    "enabled": true,
+    "totalSent": 0,
+    "createdAt": "2026-03-13T13:40:50.909Z",
+    "updatedAt": "2026-03-13T13:40:50.909Z"
+  },
+  {
+    "id": "48d02ff6-06a1-46ab-9707-929283e97f2a",
+    "name": "גרסה מוכנה למייל ",
+    "subject": "info@mentori.app",
+    "htmlBody": "<h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><p><u>וכל זה ב1 ש\"ח לחודש, כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</u></p><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה.<br>    <br>      </strong><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app\"><strong>למימוש ההטבה של - {{name}}</strong></a><strong><br>    </strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
+    "recipientMode": "manual",
+    "recipientFilter": "all",
+    "recipientTier": "",
+    "recipientStatus": "",
+    "recipientEmails": [],
+    "recipientIds": [
+      "69b2c69be005753ea873758e",
+      "698c79156c4b8942eca356c2"
+    ],
+    "scheduleType": "now",
+    "cronExpression": "",
+    "status": "active",
+    "enabled": true,
+    "totalSent": 0,
+    "createdAt": "2026-03-13T13:40:55.564Z",
+    "updatedAt": "2026-03-13T13:40:55.564Z"
+  },
+  {
+    "id": "fa584fa3-a8fb-4090-bd3d-250826e7f0a1",
+    "name": "test2",
+    "subject": "test",
+    "htmlBody": "<p>hi</p>",
+    "recipientMode": "filter",
+    "recipientFilter": "custom",
+    "recipientEmails": [
+      "galsasson101@gmail.com"
+    ],
+    "scheduleType": "now",
+    "status": "active",
+    "enabled": true,
+    "totalSent": 0,
+    "createdAt": "2026-03-13T13:41:09.157Z",
+    "updatedAt": "2026-03-13T13:41:09.157Z"
+  },
+  {
+    "id": "990380a9-e7ba-4dbb-8671-b7e7cfa73f6e",
+    "name": "quick-test",
+    "subject": "test",
+    "htmlBody": "<p>hi</p>",
+    "recipientMode": "filter",
+    "recipientFilter": "custom",
+    "recipientEmails": [
+      "galsasson101@gmail.com"
+    ],
+    "scheduleType": "now",
+    "status": "active",
+    "enabled": true,
+    "totalSent": 0,
+    "createdAt": "2026-03-13T13:41:55.161Z",
+    "updatedAt": "2026-03-13T13:41:55.161Z"
   }
 ]
