@@ -118,10 +118,14 @@ export default function EmailEditor({ value, onChange, primaryColor = '#c432e2',
 
   const insertCTA = useCallback(() => {
     if (!editor) return;
+    const url = prompt('Enter CTA URL:', 'https://mentori.app');
+    if (!url) return;
+    const text = prompt('Enter button text:', 'לחצו כאן');
+    if (!text) return;
     const ctaHtml = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;">
   <tr>
     <td align="center" style="direction:rtl;text-align:center;">
-      <a href="https://mentori.app" target="_blank" style="display:inline-block;background-color:${primaryColor};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;line-height:1.2;">לחצו כאן</a>
+      <a href="${url}" target="_blank" style="display:inline-block;background-color:${primaryColor};color:#ffffff;font-family:'Heebo',Arial,sans-serif;font-size:16px;font-weight:700;text-decoration:none;text-align:center;padding:14px 32px;border-radius:8px;line-height:1.2;">${text}</a>
     </td>
   </tr>
 </table>`;
