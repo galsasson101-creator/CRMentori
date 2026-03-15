@@ -4,7 +4,7 @@ const campaignRepo = require('../dal/CampaignRepository');
 const emailLogRepo = require('../dal/EmailLogRepository');
 const emailService = require('./emailService');
 const UserRepository = require('../dal/UserRepository');
-const { wrapInBrandedTemplate, injectTracking, wrapAllLinks } = require('../templates/brandedEmail');
+const { wrapInBrandedTemplate, buildCtaButton, injectTracking, wrapAllLinks } = require('../templates/brandedEmail');
 
 const userRepo = new UserRepository();
 
@@ -43,24 +43,35 @@ async function executeCampaign(campaign) {
   const recipients = await resolveRecipients(campaign);
   if (recipients.length === 0) return { sent: 0, failed: 0, results: [] };
 
-  const brandedHtml = wrapInBrandedTemplate(campaign.htmlBody || '');
+  // Append CTA button if configured
+  let bodyHtml = campaign.htmlBody || '';
+  if (campaign.ctaText && campaign.ctaUrl) {
+    bodyHtml += buildCtaButton(campaign.ctaText, campaign.ctaUrl);
+  }
+
+  const brandedHtml = wrapInBrandedTemplate(bodyHtml);
   const results = [];
 
   for (const recipient of recipients) {
     const to = recipient.email;
+    const recipientName = recipient.name || recipient.firstName || '';
+    // Replace {{name}} with recipient's actual name
+    let personalizedHtml = brandedHtml.replace(/\{\{name\}\}/g, recipientName);
+
     // Generate tracking ID upfront (no file write — avoids nodemon restart)
     const emailLogId = uuidv4();
 
-    // Inject tracking pixel and wrap links
-    let trackedHtml = wrapAllLinks(brandedHtml, emailLogId);
+    // Inject tracking pixel and wrap links (CTA URL gets tracked automatically via wrapAllLinks)
+    let trackedHtml = wrapAllLinks(personalizedHtml, emailLogId);
     trackedHtml = injectTracking(trackedHtml, emailLogId);
 
     try {
+      const personalizedSubject = campaign.subject.replace(/\{\{name\}\}/g, recipientName);
       await emailService.sendEmail({
         to,
-        subject: campaign.subject,
+        subject: personalizedSubject,
         html: trackedHtml,
-        text: campaign.textBody,
+        text: campaign.textBody ? campaign.textBody.replace(/\{\{name\}\}/g, recipientName) : undefined,
       });
       results.push({ to, subject: campaign.subject, status: 'sent', emailLogId });
     } catch (err) {
