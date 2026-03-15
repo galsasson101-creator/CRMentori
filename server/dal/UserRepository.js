@@ -326,9 +326,13 @@ class UserRepository {
     // Extract account creation time from MongoDB ObjectId
     const createdAt = rest.createdAt || (ObjectId.isValid(id) ? new ObjectId(id).getTimestamp().toISOString() : null);
 
+    // Use phone from user doc, or fall back to payerPhone from subscription
+    const phone = rest.phone || (sub && sub.payerPhone) || null;
+
     return {
       id,
       ...rest,
+      phone,
       createdAt,
       tier,
       subscriptionStatus,

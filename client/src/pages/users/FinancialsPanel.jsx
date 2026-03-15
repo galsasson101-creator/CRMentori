@@ -107,7 +107,7 @@ export default function FinancialsPanel({ user }) {
               .map(([date, minutes]) => (
                 <div key={date} className="flex justify-between text-sm">
                   <span className="text-gray-500 dark:text-gray-400">{formatDate(date)}</span>
-                  <span className="text-gray-700 dark:text-gray-300">{minutes} min</span>
+                  <span className="text-gray-700 dark:text-gray-300">{Math.round(minutes / 60)} min</span>
                 </div>
               ))}
           </div>

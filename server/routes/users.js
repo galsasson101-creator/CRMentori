@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const UserRepository = require('../dal/UserRepository');
 const ActivityRepository = require('../dal/ActivityRepository');
+const { sendWelcomeEmail } = require('../services/welcomeEmail');
 
 const userRepo = new UserRepository();
 const activityRepo = new ActivityRepository();
@@ -32,6 +33,8 @@ router.get('/', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const user = await userRepo.create(req.body);
+    // Send welcome email in the background (don't block the response)
+    sendWelcomeEmail(user).catch(() => {});
     res.status(201).json(user);
   } catch (err) {
     next(err);

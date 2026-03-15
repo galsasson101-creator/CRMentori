@@ -26,17 +26,23 @@ async function resolveRecipients(campaign) {
   }
 
   const allUsers = await userRepo.getAll();
-  const withEmail = allUsers.filter(u => u.email);
+  let filtered = allUsers.filter(u => u.email);
 
-  if (filter === 'all') return withEmail;
   if (filter === 'tier' && campaign.recipientTier) {
-    return withEmail.filter(u => u.tier === campaign.recipientTier);
+    filtered = filtered.filter(u => u.tier === campaign.recipientTier);
   }
   if (filter === 'status' && campaign.recipientStatus) {
-    return withEmail.filter(u => u.subscriptionStatus === campaign.recipientStatus);
+    filtered = filtered.filter(u => u.subscriptionStatus === campaign.recipientStatus);
+  }
+  if (campaign.recipientDateFrom) {
+    filtered = filtered.filter(u => u.createdAt && new Date(u.createdAt) >= new Date(campaign.recipientDateFrom));
+  }
+  if (campaign.recipientDateTo) {
+    const to = new Date(campaign.recipientDateTo); to.setDate(to.getDate() + 1);
+    filtered = filtered.filter(u => u.createdAt && new Date(u.createdAt) < to);
   }
 
-  return withEmail;
+  return filtered;
 }
 
 async function executeCampaign(campaign) {

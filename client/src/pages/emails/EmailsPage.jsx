@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Mail, Send, Plus, Play, Pause, Trash2, Edit3, Save, X, Search,
-  CheckCircle2, XCircle, Zap, FileText, History, Settings, Users,
+  CheckCircle2, XCircle, Zap, Settings, Users,
   Clock, MailCheck, MailX, RefreshCw, ChevronDown, ChevronUp, Eye,
   Calendar, Filter, UserCheck, RotateCcw, Palette, Image, Globe, Share2,
-  Smartphone, Monitor, MousePointerClick,
+  Smartphone, Monitor, MousePointerClick, Link,
 } from 'lucide-react';
 import useApi from '../../hooks/useApi.js';
 import * as api from '../../lib/api.js';
@@ -14,11 +14,9 @@ import EmptyState from '../../components/shared/EmptyState.jsx';
 import { SUBSCRIPTION_COLORS } from '../../lib/constants.js';
 import EmailEditor from '../../components/emails/EmailEditor.jsx';
 
-// ── Tab config (4 tabs) ──
+// ── Tab config (2 tabs) ──
 const TABS = [
   { id: 'campaigns', label: 'Campaigns', icon: Send },
-  { id: 'templates', label: 'Templates', icon: FileText },
-  { id: 'history', label: 'History', icon: History },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -96,8 +94,6 @@ export default function EmailsPage() {
 
       {/* Tab content */}
       {activeTab === 'campaigns' && <CampaignsTab />}
-      {activeTab === 'templates' && <TemplatesTab />}
-      {activeTab === 'history' && <HistoryTab />}
       {activeTab === 'settings' && <SettingsTab />}
     </div>
   );
@@ -135,10 +131,61 @@ function CampaignStatsBadges({ campaignId }) {
   );
 }
 
+function CampaignInlineLogs({ campaignId }) {
+  const { data: logs, loading } = useApi(useCallback(() => api.get(`/emails/campaigns/${campaignId}/logs`), [campaignId]));
+
+  if (loading) {
+    return <div className="flex justify-center py-4"><div className="w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (!logs || logs.length === 0) return null;
+
+  return (
+    <div className="mt-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-100 dark:bg-gray-800">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recipient</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Opens</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Clicks</th>
+            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sent</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+          {logs.map(log => (
+            <tr key={log.id} className="hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
+              <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">{log.to}</td>
+              <td className="px-4 py-2">
+                {log.status === 'sent'
+                  ? <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400"><CheckCircle2 size={14} /> Sent</span>
+                  : <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400"><XCircle size={14} /> Failed</span>
+                }
+              </td>
+              <td className="px-4 py-2">
+                <span className={`flex items-center gap-1 text-sm ${(log.openCount || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  <Eye size={14} /> {log.openCount || 0}
+                </span>
+              </td>
+              <td className="px-4 py-2">
+                <span className={`flex items-center gap-1 text-sm ${(log.clickCount || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  <MousePointerClick size={14} /> {log.clickCount || 0}
+                </span>
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{formatRelativeDate(log.sentAt || log.createdAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CampaignsTab() {
   const { data, loading, refetch } = useApi(useCallback(() => api.get('/emails/campaigns'), []));
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   const campaigns = data || [];
 
@@ -241,10 +288,13 @@ function CampaignsTab() {
                           <Users size={12} />
                           {campaign.recipientMode === 'manual'
                             ? `${(campaign.recipientIds || []).length} users`
-                            : campaign.recipientFilter === 'all' ? 'All users'
-                            : campaign.recipientFilter === 'tier' ? `Tier: ${campaign.recipientTier}`
-                            : campaign.recipientFilter === 'status' ? `Status: ${campaign.recipientStatus}`
-                            : 'Custom emails'}
+                            : campaign.recipientFilter === 'custom' ? 'Custom emails'
+                            : [
+                                campaign.recipientFilter === 'tier' ? `Tier: ${campaign.recipientTier}` : campaign.recipientFilter === 'status' ? `Status: ${campaign.recipientStatus}` : 'All users',
+                                campaign.recipientDateFrom || campaign.recipientDateTo
+                                  ? `(${campaign.recipientDateFrom || '...'} – ${campaign.recipientDateTo || '...'})`
+                                  : null,
+                              ].filter(Boolean).join(' ')}
                         </span>
                         {campaign.totalSent > 0 && (
                           <span className="flex items-center gap-1">
@@ -263,6 +313,14 @@ function CampaignsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {campaign.totalSent > 0 && (
+                      <ActionButton
+                        icon={expandedId === campaign.id ? ChevronUp : ChevronDown}
+                        title={expandedId === campaign.id ? 'Hide logs' : 'Show logs'}
+                        color="blue"
+                        onClick={() => setExpandedId(expandedId === campaign.id ? null : campaign.id)}
+                      />
+                    )}
                     {campaign.status !== 'completed' && (
                       <ActionButton icon={Play} title="Run now" color="blue" onClick={() => handleRun(campaign.id)} />
                     )}
@@ -276,6 +334,7 @@ function CampaignsTab() {
                     <ActionButton icon={Trash2} title="Delete" color="red" onClick={() => handleDelete(campaign.id)} />
                   </div>
                 </div>
+                {expandedId === campaign.id && <CampaignInlineLogs campaignId={campaign.id} />}
               </div>
             );
           })}
@@ -310,8 +369,10 @@ function CampaignForm({ campaign, onSave, onCancel }) {
 
   const [form, setForm] = useState(campaign || {
     name: '', subject: '', htmlBody: '',
+    ctaText: '', ctaUrl: '',
     recipientMode: 'filter',
     recipientFilter: 'all', recipientTier: '', recipientStatus: '',
+    recipientDateFrom: '', recipientDateTo: '',
     recipientEmails: '',
     recipientIds: [],
     scheduleType: 'now',
@@ -348,17 +409,22 @@ function CampaignForm({ campaign, onSave, onCancel }) {
   // Count recipients for badge
   const recipientCount = useMemo(() => {
     if (form.recipientMode === 'manual') return selectedUsers.size;
-    if (form.recipientFilter === 'all') return users.filter(u => u.email).length;
-    if (form.recipientFilter === 'tier' && form.recipientTier) return users.filter(u => u.email && u.tier === form.recipientTier).length;
-    if (form.recipientFilter === 'status' && form.recipientStatus) return users.filter(u => u.email && u.subscriptionStatus === form.recipientStatus).length;
     if (form.recipientFilter === 'custom') {
       const emails = typeof form.recipientEmails === 'string'
         ? form.recipientEmails.split(',').filter(e => e.trim())
         : (form.recipientEmails || []);
       return emails.length;
     }
-    return 0;
-  }, [form.recipientMode, form.recipientFilter, form.recipientTier, form.recipientStatus, form.recipientEmails, selectedUsers, users]);
+    let filtered = users.filter(u => u.email);
+    if (form.recipientFilter === 'tier' && form.recipientTier) filtered = filtered.filter(u => u.tier === form.recipientTier);
+    if (form.recipientFilter === 'status' && form.recipientStatus) filtered = filtered.filter(u => u.subscriptionStatus === form.recipientStatus);
+    if (form.recipientDateFrom) filtered = filtered.filter(u => u.createdAt && new Date(u.createdAt) >= new Date(form.recipientDateFrom));
+    if (form.recipientDateTo) {
+      const to = new Date(form.recipientDateTo); to.setDate(to.getDate() + 1);
+      filtered = filtered.filter(u => u.createdAt && new Date(u.createdAt) < to);
+    }
+    return filtered.length;
+  }, [form.recipientMode, form.recipientFilter, form.recipientTier, form.recipientStatus, form.recipientDateFrom, form.recipientDateTo, form.recipientEmails, selectedUsers, users]);
 
   const toggleAllUsers = () => {
     if (selectedUsers.size === filteredUsers.length) {
@@ -509,6 +575,22 @@ function CampaignForm({ campaign, onSave, onCancel }) {
                 placeholder="שלום {{name}}, יש לנו חדשות מרגשות בשבילך..."
               />
             </FormField>
+
+            {/* CTA Button */}
+            <div className="space-y-2">
+              <SectionHeader icon={Link} title="CTA Button" badge="Optional" />
+              <p className="text-xs text-gray-500 dark:text-gray-400">Add a call-to-action button linking to a specific page</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField label="Button Text">
+                  <input value={form.ctaText} onChange={e => setForm(f => ({ ...f, ctaText: e.target.value }))}
+                    placeholder="e.g. למימוש ההטבה" className={inputClass} />
+                </FormField>
+                <FormField label="Button URL">
+                  <input value={form.ctaUrl} onChange={e => setForm(f => ({ ...f, ctaUrl: e.target.value }))}
+                    placeholder="e.g. https://mentori.app/offer/123" className={inputClass} />
+                </FormField>
+              </div>
+            </div>
           </div>
 
           {/* Section 2: Recipients */}
@@ -574,6 +656,16 @@ function CampaignForm({ campaign, onSave, onCancel }) {
                       onChange={e => setForm(f => ({ ...f, recipientEmails: e.target.value }))}
                       placeholder="a@example.com, b@example.com" className={inputClass} />
                   </FormField>
+                )}
+                {form.recipientFilter !== 'custom' && (
+                  <>
+                    <FormField label="Signed up from">
+                      <input type="date" value={form.recipientDateFrom || ''} onChange={e => setForm(f => ({ ...f, recipientDateFrom: e.target.value }))} className={inputClass} />
+                    </FormField>
+                    <FormField label="Signed up until">
+                      <input type="date" value={form.recipientDateTo || ''} onChange={e => setForm(f => ({ ...f, recipientDateTo: e.target.value }))} className={inputClass} />
+                    </FormField>
+                  </>
                 )}
               </div>
             ) : (
@@ -848,254 +940,6 @@ function SectionHeader({ icon: Icon, title, badge }) {
         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
           {badge}
         </span>
-      )}
-    </div>
-  );
-}
-
-// ── Templates Tab ──
-function TemplatesTab() {
-  const { data, loading, refetch } = useApi(useCallback(() => api.get('/emails/templates'), []));
-  const [editing, setEditing] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState(null);
-
-  const templates = data || [];
-
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this template?')) return;
-    await api.del(`/emails/templates/${id}`);
-    refetch();
-  };
-
-  if (loading) {
-    return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
-  }
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400">{templates.length} template{templates.length !== 1 ? 's' : ''}</p>
-        <button onClick={() => { setEditing(null); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-          <Plus size={16} /> New Template
-        </button>
-      </div>
-
-      {showForm && (
-        <TemplateForm
-          template={editing}
-          onSave={() => { setShowForm(false); setEditing(null); refetch(); }}
-          onCancel={() => { setShowForm(false); setEditing(null); }}
-        />
-      )}
-
-      {templates.length === 0 && !showForm ? (
-        <EmptyState icon={FileText} title="No templates yet" subtitle="Save reusable email templates for faster campaign creation." />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map(t => (
-            <div key={t.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-              <div
-                className="h-32 bg-gray-50 dark:bg-gray-900 p-3 overflow-hidden text-xs text-gray-400 font-mono cursor-pointer border-b border-gray-200 dark:border-gray-700"
-                onClick={() => setPreviewHtml(t.html)}
-              >
-                <div className="opacity-60" dangerouslySetInnerHTML={{ __html: t.html.slice(0, 300) }} />
-              </div>
-              <div className="p-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-0.5">{t.name}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Subject: {t.subject}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400">{formatDate(t.createdAt)}</span>
-                  <div className="flex gap-1">
-                    <button onClick={() => setPreviewHtml(t.html)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"><Eye size={14} /></button>
-                    <button onClick={() => { setEditing(t); setShowForm(true); }} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 transition-colors"><Edit3 size={14} /></button>
-                    <button onClick={() => handleDelete(t.id)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <Modal isOpen={!!previewHtml} onClose={() => setPreviewHtml(null)} title="Template Preview" width="max-w-2xl">
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900 max-h-[500px] overflow-y-auto">
-          <div dangerouslySetInnerHTML={{ __html: (previewHtml || '').replace(/\{\{name\}\}/g, 'John Doe') }} />
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-function TemplateForm({ template, onSave, onCancel }) {
-  const [form, setForm] = useState(template || { name: '', subject: '', html: '' });
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      if (template?.id) {
-        await api.put(`/emails/templates/${template.id}`, form);
-      } else {
-        await api.post('/emails/templates', form);
-      }
-      onSave();
-    } catch (err) {
-      alert('Error: ' + (err.message || 'Failed to save'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-blue-200 dark:border-blue-800 p-6 mb-6 space-y-4 shadow-sm">
-      <div className="flex justify-between items-center">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{template ? 'Edit' : 'New'} Template</h3>
-        <button type="button" onClick={onCancel} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-          <X size={18} className="text-gray-400" />
-        </button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField label="Template Name">
-          <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Welcome Email" className={inputClass} />
-        </FormField>
-        <FormField label="Subject">
-          <input required value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Email subject line" className={inputClass} />
-        </FormField>
-      </div>
-      <FormField label="HTML Body">
-        <textarea rows={10} required value={form.html} onChange={e => setForm(f => ({ ...f, html: e.target.value }))}
-          className={`${inputClass} font-mono resize-y`} placeholder={'<h1>Hello {{name}}</h1>\n<p>Welcome to Mentori!</p>'} />
-      </FormField>
-      <div className="flex gap-3">
-        <button type="submit" disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-          <Save size={16} /> {saving ? 'Saving...' : 'Save Template'}
-        </button>
-        <button type="button" onClick={onCancel}
-          className="px-5 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// ── History Tab ──
-function HistoryTab() {
-  const { data, loading, refetch } = useApi(useCallback(() => api.get('/emails/logs'), []));
-  const [filter, setFilter] = useState('all');
-  const logs = data || [];
-
-  const filtered = useMemo(() => {
-    if (filter === 'all') return logs;
-    if (filter === 'opened') return logs.filter(l => (l.openCount || 0) > 0);
-    if (filter === 'clicked') return logs.filter(l => (l.clickCount || 0) > 0);
-    return logs.filter(l => l.status === filter);
-  }, [logs, filter]);
-
-  const sentCount = logs.filter(l => l.status === 'sent').length;
-  const failedCount = logs.filter(l => l.status === 'failed').length;
-  const openedCount = logs.filter(l => (l.openCount || 0) > 0).length;
-  const clickedCount = logs.filter(l => (l.clickCount || 0) > 0).length;
-
-  if (loading) {
-    return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
-  }
-
-  return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-gray-500 dark:text-gray-400">{logs.length} total</p>
-          <div className="flex gap-1">
-            {[
-              { value: 'all', label: `All (${logs.length})` },
-              { value: 'sent', label: `Sent (${sentCount})` },
-              { value: 'failed', label: `Failed (${failedCount})` },
-              { value: 'opened', label: `Opened (${openedCount})` },
-              { value: 'clicked', label: `Clicked (${clickedCount})` },
-            ].map(f => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  filter === f.value
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button onClick={refetch} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-          <RefreshCw size={12} /> Refresh
-        </button>
-      </div>
-
-      {logs.length === 0 ? (
-        <EmptyState icon={History} title="No emails sent yet" subtitle="Send your first campaign to see the history here." />
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recipient</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subject</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Campaign</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Opens</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Clicks</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sent</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {filtered.map(log => (
-                  <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{log.to}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 max-w-[200px] truncate">{log.subject}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 max-w-[150px] truncate">
-                      {log.campaignName || log.automationName || '--'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        log.type === 'campaign' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
-                        log.type === 'automation' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
-                        log.type === 'bulk' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
-                        'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                      }`}>
-                        {log.type === 'campaign' ? 'Campaign' : capitalize(log.type || 'manual')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.status === 'sent'
-                        ? <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400"><CheckCircle2 size={14} /> Sent</span>
-                        : <span className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400"><XCircle size={14} /> Failed</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`flex items-center gap-1 text-sm ${(log.openCount || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                        <Eye size={14} /> {log.openCount || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`flex items-center gap-1 text-sm ${(log.clickCount || 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                        <MousePointerClick size={14} /> {log.clickCount || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{formatRelativeDate(log.sentAt || log.createdAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
     </div>
   );

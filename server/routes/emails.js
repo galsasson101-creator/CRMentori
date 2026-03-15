@@ -134,6 +134,15 @@ router.delete('/templates/:id', (req, res) => {
   res.status(204).end();
 });
 
+// ── Welcome Email Preview ──
+router.get('/preview-welcome', (req, res) => {
+  const { buildWelcomeHtml } = require('../services/welcomeEmail');
+  const settings = brandSettingsRepo.get();
+  const name = req.query.name || 'ישראל ישראלי';
+  const html = buildWelcomeHtml(name, settings);
+  res.send(html);
+});
+
 // ── Branded Email Preview ──
 router.post('/preview-branded', (req, res) => {
   const { html, settings } = req.body;
@@ -220,6 +229,18 @@ router.get('/campaigns/:id/stats', async (req, res, next) => {
     const clickRate = totalSent > 0 ? Math.round((uniqueClicks / totalSent) * 100) : 0;
 
     res.json({ totalSent, uniqueOpens, totalOpens, uniqueClicks, totalClicks, openRate, clickRate });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Campaign logs (per-campaign history) ──
+router.get('/campaigns/:id/logs', async (req, res, next) => {
+  try {
+    const campaign = campaignRepo.getById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+    const logs = await emailLogRepo.getByCampaignIdWithTracking(req.params.id);
+    res.json(logs);
   } catch (err) {
     next(err);
   }

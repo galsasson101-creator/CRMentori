@@ -34,6 +34,7 @@ app.use('/api/activities', activitiesRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/emails', emailsRouter);
 app.use('/api/tracking', trackingRouter);
+app.use('/api/crm-tracking', trackingRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

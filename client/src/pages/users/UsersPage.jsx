@@ -118,6 +118,7 @@ export default function UsersPage() {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Phone</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Courses</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
@@ -153,6 +154,9 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                     {user.email || '--'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                    {user.phone || '--'}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex flex-wrap gap-1">
@@ -199,7 +203,7 @@ export default function UsersPage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={10} className="px-4 py-12 text-center text-gray-400 text-sm">
                   No users found
                 </td>
               </tr>
