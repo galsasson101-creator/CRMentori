@@ -23,27 +23,5 @@
     "lastRun": "2026-03-15T15:14:23.115Z",
     "ctaUrl": "https://mentori.app/free-trial",
     "ctaText": ""
-  },
-  {
-    "id": "76bffc18-02cb-4d41-a0f3-0c167257be3e",
-    "name": "גרסה מוכנה למייל ",
-    "subject": "info@mentori.app",
-    "htmlBody": "<h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><p>וכל זה ב1 ש\"ח לחודש, כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</p><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה.<br>    <br>      </strong><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app\"><strong>למימוש ההטבה של - {{name}}</strong></a><strong><br>    </strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
-    "recipientMode": "manual",
-    "recipientFilter": "all",
-    "recipientTier": "",
-    "recipientStatus": "",
-    "recipientEmails": [],
-    "recipientIds": [
-      "69b2c69be005753ea873758e",
-      "698c79156c4b8942eca356c2"
-    ],
-    "scheduleType": "now",
-    "cronExpression": "",
-    "status": "active",
-    "enabled": true,
-    "totalSent": 0,
-    "createdAt": "2026-03-13T13:39:11.288Z",
-    "updatedAt": "2026-03-13T13:39:11.288Z"
   }
 ]
