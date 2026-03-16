@@ -105,4 +105,62 @@ async function verifyConnection() {
   }
 }
 
-module.exports = { sendEmail, sendBulkEmails, verifyConnection };
+async function fetchBouncedEmails() {
+  const token = await getAccessToken();
+  const sender = process.env.MAIL_FROM || 'info@mentori.app';
+
+  // Search for NDR / bounce messages in the inbox
+  const searchQueries = [
+    `subject:Undeliverable`,
+    `subject:Delivery has failed`,
+    `subject:Mail Delivery Failed`,
+    `subject:Failure notice`,
+    `subject:Returned mail`,
+    `subject:Undelivered Mail Returned`,
+  ];
+
+  const bouncedEmails = new Set();
+  // Regex to extract email addresses from NDR body
+  const emailRegex = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
+
+  for (const query of searchQueries) {
+    let url = `https://graph.microsoft.com/v1.0/users/${sender}/messages?$search="${query}"&$top=500&$select=body,subject,from,receivedDateTime`;
+
+    while (url) {
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Prefer: 'outlook.body-content-type="text"',
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`Graph API error: ${err.error?.message || res.statusText}`);
+      }
+
+      const data = await res.json();
+
+      for (const msg of (data.value || [])) {
+        const bodyText = msg.body?.content || '';
+        const foundEmails = bodyText.match(emailRegex) || [];
+        for (const email of foundEmails) {
+          const lower = email.toLowerCase();
+          // Skip our own sender address and system addresses
+          if (lower === sender.toLowerCase()) continue;
+          if (lower.includes('postmaster') || lower.includes('mailer-daemon')) continue;
+          if (lower.includes('noreply') || lower.includes('no-reply')) continue;
+          if (lower.endsWith('@microsoft.com') || lower.endsWith('@protection.outlook.com')) continue;
+          bouncedEmails.add(lower);
+        }
+      }
+
+      url = data['@odata.nextLink'] || null;
+    }
+  }
+
+  return Array.from(bouncedEmails);
+}
+
+module.exports = { sendEmail, sendBulkEmails, verifyConnection, fetchBouncedEmails };

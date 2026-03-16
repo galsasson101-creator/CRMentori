@@ -54,6 +54,66 @@ class EmailLogRepository {
     return await this._getCollection().find({ campaignId }).toArray();
   }
 
+  async getFailed() {
+    return await this._getCollection()
+      .find({ status: 'failed' })
+      .sort({ createdAt: -1 })
+      .toArray();
+  }
+
+  async getBounced() {
+    return await this._getCollection()
+      .find({ status: { $in: ['failed', 'bounced'] } })
+      .sort({ createdAt: -1 })
+      .toArray();
+  }
+
+  async markAsBounced(emails) {
+    const normalized = emails.map(e => e.trim().toLowerCase());
+    const result = await this._getCollection().updateMany(
+      { to: { $in: normalized } },
+      { $set: { status: 'bounced', updatedAt: new Date().toISOString() } },
+      { collation: { locale: 'en', strength: 2 } }
+    );
+    return { matched: result.matchedCount, updated: result.modifiedCount };
+  }
+
+  async getStats() {
+    const col = this._getCollection();
+    const [sent, failed, bounced, total] = await Promise.all([
+      col.countDocuments({ status: 'sent' }),
+      col.countDocuments({ status: 'failed' }),
+      col.countDocuments({ status: 'bounced' }),
+      col.countDocuments({}),
+    ]);
+    const openedCount = await col.countDocuments({ status: 'sent', openCount: { $gt: 0 } });
+    const clickedCount = await col.countDocuments({ status: 'sent', clickCount: { $gt: 0 } });
+    const openRate = sent > 0 ? Math.round((openedCount / sent) * 100) : 0;
+    const clickRate = sent > 0 ? Math.round((clickedCount / sent) * 100) : 0;
+    return { sent, failed, bounced, total, openRate, clickRate };
+  }
+
+  async getStatusByRecipient() {
+    const logs = await this._getCollection()
+      .find({}, { projection: { to: 1, status: 1, sentAt: 1, createdAt: 1 } })
+      .sort({ sentAt: -1, createdAt: -1 })
+      .toArray();
+
+    // Keep the worst status per email (bounced > failed > sent)
+    const statusPriority = { bounced: 3, failed: 2, sent: 1 };
+    const map = {};
+    for (const log of logs) {
+      if (!log.to) continue;
+      const key = log.to.toLowerCase();
+      const existing = map[key];
+      const priority = statusPriority[log.status] || 0;
+      if (!existing || priority > (statusPriority[existing] || 0)) {
+        map[key] = log.status;
+      }
+    }
+    return map;
+  }
+
   async update(id, data) {
     const now = new Date().toISOString();
     const result = await this._getCollection().findOneAndUpdate(

@@ -17,6 +17,7 @@ import EmailEditor from '../../components/emails/EmailEditor.jsx';
 // ── Tab config (2 tabs) ──
 const TABS = [
   { id: 'campaigns', label: 'Campaigns', icon: Send },
+  { id: 'bounced', label: 'Bounced', icon: MailX },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -39,17 +40,14 @@ const STATUS_COLORS = {
 // ── Main Page ──
 export default function EmailsPage() {
   const [activeTab, setActiveTab] = useState('campaigns');
-  const { data: logs } = useApi(useCallback(() => api.get('/emails/logs'), []));
+  const { data: stats } = useApi(useCallback(() => api.get('/emails/stats'), []));
   const { data: campaigns } = useApi(useCallback(() => api.get('/emails/campaigns'), []));
 
-  const totalSent = (logs || []).filter(l => l.status === 'sent').length;
-  const totalFailed = (logs || []).filter(l => l.status === 'failed').length;
+  const totalSent = stats?.sent || 0;
+  const totalFailed = (stats?.failed || 0) + (stats?.bounced || 0);
   const activeCampaigns = (campaigns || []).filter(c => c.status === 'active').length;
-
-  const openedLogs = (logs || []).filter(l => (l.openCount || 0) > 0).length;
-  const clickedLogs = (logs || []).filter(l => (l.clickCount || 0) > 0).length;
-  const openRate = totalSent > 0 ? Math.round((openedLogs / totalSent) * 100) : 0;
-  const clickRate = totalSent > 0 ? Math.round((clickedLogs / totalSent) * 100) : 0;
+  const openRate = stats?.openRate || 0;
+  const clickRate = stats?.clickRate || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -64,7 +62,7 @@ export default function EmailsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiCard icon={MailCheck} label="Emails Sent" value={totalSent} accent="#00c875" />
-        <KpiCard icon={MailX} label="Failed" value={totalFailed} accent="#e2445c" />
+        <KpiCard icon={MailX} label="Failed" value={totalFailed} accent="#e2445c" onClick={() => setActiveTab('bounced')} />
         <KpiCard icon={Zap} label="Active Campaigns" value={activeCampaigns} accent="#a25ddc" />
         <KpiCard icon={Send} label="Total Campaigns" value={(campaigns || []).length} accent="#0086c0" />
         <KpiCard icon={Eye} label="Open Rate" value={`${openRate}%`} accent="#fdab3d" />
@@ -94,15 +92,16 @@ export default function EmailsPage() {
 
       {/* Tab content */}
       {activeTab === 'campaigns' && <CampaignsTab />}
+      {activeTab === 'bounced' && <BouncedTab />}
       {activeTab === 'settings' && <SettingsTab />}
     </div>
   );
 }
 
 // ── KPI Card ──
-function KpiCard({ icon: Icon, label, value, accent }) {
+function KpiCard({ icon: Icon, label, value, accent, onClick }) {
   return (
-    <div className="relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer' : ''}`}>
       <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ backgroundColor: accent }} />
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>
@@ -338,6 +337,163 @@ function CampaignsTab() {
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Bounced / Failed Tab ──
+function BouncedTab() {
+  const { data, loading, refetch } = useApi(useCallback(() => api.get('/emails/logs/bounced'), []));
+  const [search, setSearch] = useState('');
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  const logs = data || [];
+  const filtered = search
+    ? logs.filter(l => l.to?.toLowerCase().includes(search.toLowerCase()) || l.error?.toLowerCase().includes(search.toLowerCase()) || l.campaignName?.toLowerCase().includes(search.toLowerCase()))
+    : logs;
+
+  const handleImport = async () => {
+    const emails = importText
+      .split(/[\n,;]+/)
+      .map(e => e.trim().toLowerCase())
+      .filter(e => e && e.includes('@'));
+    if (emails.length === 0) return alert('No valid emails found.');
+    setImporting(true);
+    try {
+      const res = await api.post('/emails/logs/bounced', { emails });
+      alert(`Done! ${res.updated} email log${res.updated !== 1 ? 's' : ''} marked as bounced.`);
+      setImportText('');
+      setShowImport(false);
+      refetch();
+    } catch (err) {
+      alert('Error: ' + (err.message || 'Failed to import'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="font-semibold text-red-600 dark:text-red-400">{logs.length}</span> bounced / failed email{logs.length !== 1 ? 's' : ''}
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search email or error..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 w-64"
+            />
+          </div>
+          <button
+            onClick={async () => {
+              setScanning(true);
+              try {
+                const res = await api.post('/emails/logs/scan-bounces');
+                alert(`Scan complete! Found ${res.found} bounced email${res.found !== 1 ? 's' : ''}, ${res.updated} log${res.updated !== 1 ? 's' : ''} updated.`);
+                refetch();
+              } catch (err) {
+                alert('Scan failed: ' + (err.message || 'Unknown error'));
+              } finally {
+                setScanning(false);
+              }
+            }}
+            disabled={scanning}
+            className="flex items-center gap-2 px-4 py-2 bg-navy-800 hover:bg-navy-900 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+          >
+            {scanning ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+            {scanning ? 'Scanning Inbox...' : 'Scan Inbox for Bounces'}
+          </button>
+          <button
+            onClick={() => setShowImport(!showImport)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+          >
+            <Plus size={16} /> Import Manually
+          </button>
+        </div>
+      </div>
+
+      {showImport && (
+        <div className="mb-4 bg-white dark:bg-gray-800 rounded-2xl border border-red-200 dark:border-red-900/50 shadow-sm p-5">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Import Bounced Emails</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Paste the bounced email addresses below (one per line, or separated by commas). These will be marked as bounced in the system.
+          </p>
+          <textarea
+            value={importText}
+            onChange={e => setImportText(e.target.value)}
+            placeholder={"example1@gmail.com\nexample2@gmail.com\nexample3@gmail.com"}
+            rows={6}
+            className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 font-mono resize-y"
+          />
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-xs text-gray-400">
+              {importText.split(/[\n,;]+/).filter(e => e.trim() && e.trim().includes('@')).length} email(s) detected
+            </span>
+            <div className="flex gap-2">
+              <button onClick={() => { setShowImport(false); setImportText(''); }} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={importing}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition-colors"
+              >
+                {importing ? <RefreshCw size={14} className="animate-spin" /> : <MailX size={14} />}
+                Mark as Bounced
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <EmptyState icon={MailX} title={search ? 'No matches' : 'No bounced emails'} subtitle={search ? 'Try a different search term.' : 'All emails were delivered successfully.'} />
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recipient</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Campaign</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Error</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {filtered.map(log => (
+                <tr key={log.id || log._id} className="hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
+                  <td className="px-5 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{log.to}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-400">{log.campaignName || '—'}</td>
+                  <td className="px-5 py-3">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                      log.status === 'bounced'
+                        ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                    }`}>
+                      <XCircle size={12} /> {log.status === 'bounced' ? 'Bounced' : 'Failed'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-sm text-red-600 dark:text-red-400 max-w-xs truncate" title={log.error}>{log.error || '—'}</td>
+                  <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400">{formatRelativeDate(log.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

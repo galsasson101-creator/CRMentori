@@ -3,25 +3,24 @@
     "id": "ef52f834-ac2a-4b0f-a6d8-72b687525a0a",
     "name": "גרסה מוכנה למייל ",
     "subject": "info@mentori.app",
-    "htmlBody": "<p></p><h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><h1><strong>וכל זה ב0 ש\"ח לחודש,</strong> כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</h1><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה<br></strong></h3><h2><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app/free-trial\"><strong>למימוש ההטבה שלך </strong></a></h2><h3><strong><br></strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
-    "recipientMode": "manual",
-    "recipientFilter": "all",
+    "htmlBody": "<p></p><h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><h1><strong>וכל זה ב0 ש\"ח לחודש,</strong> כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</h1><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה<br></strong></h3><h2><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app/free-trial\"><strong>למימוש ההטבה שלי</strong></a></h2><h3><strong><br></strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
+    "recipientMode": "filter",
+    "recipientFilter": "status",
     "recipientTier": "",
-    "recipientStatus": "",
+    "recipientStatus": "free",
     "recipientEmails": [],
-    "recipientIds": [
-      "69b2c69be005753ea873758e",
-      "698c79156c4b8942eca356c2"
-    ],
+    "recipientIds": [],
     "scheduleType": "now",
     "cronExpression": "",
     "status": "completed",
     "enabled": true,
-    "totalSent": 8,
+    "totalSent": 975,
     "createdAt": "2026-03-13T13:39:03.781Z",
-    "updatedAt": "2026-03-15T15:14:23.115Z",
-    "lastRun": "2026-03-15T15:14:23.115Z",
+    "updatedAt": "2026-03-16T15:43:52.900Z",
+    "lastRun": "2026-03-16T15:43:52.900Z",
     "ctaUrl": "https://mentori.app/free-trial",
-    "ctaText": ""
+    "ctaText": "",
+    "recipientDateFrom": "2025-09-01",
+    "recipientDateTo": "2026-03-10"
   }
 ]

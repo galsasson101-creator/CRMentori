@@ -102,6 +102,64 @@ router.get('/logs', async (req, res, next) => {
   }
 });
 
+// ── Bounced / Failed Logs ──
+router.get('/logs/bounced', async (req, res, next) => {
+  try {
+    const logs = await emailLogRepo.getBounced();
+    res.json(logs);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Global email stats (KPIs) ──
+router.get('/stats', async (req, res, next) => {
+  try {
+    const stats = await emailLogRepo.getStats();
+    res.json(stats);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Email status per recipient (for users table) ──
+router.get('/logs/status-by-email', async (req, res, next) => {
+  try {
+    const map = await emailLogRepo.getStatusByRecipient();
+    res.json(map);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Mark emails as bounced ──
+router.post('/logs/bounced', async (req, res, next) => {
+  try {
+    const { emails } = req.body;
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ error: 'emails array is required' });
+    }
+    const result = await emailLogRepo.markAsBounced(emails);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Auto-scan inbox for bounced NDRs ──
+router.post('/logs/scan-bounces', async (req, res, next) => {
+  try {
+    const bouncedEmails = await emailService.fetchBouncedEmails();
+    if (bouncedEmails.length === 0) {
+      return res.json({ found: 0, updated: 0, emails: [] });
+    }
+    const result = await emailLogRepo.markAsBounced(bouncedEmails);
+    res.json({ found: bouncedEmails.length, ...result, emails: bouncedEmails });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Templates CRUD ──
 router.get('/templates', (req, res) => {
   res.json(templateRepo.getAll());
