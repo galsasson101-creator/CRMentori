@@ -8,6 +8,8 @@ const templateRepo = require('../dal/EmailTemplateRepository');
 const { executeCampaign, scheduleCampaign, removeSchedule } = require('../services/campaignRunner');
 const { wrapInBrandedTemplate, injectTracking, wrapAllLinks } = require('../templates/brandedEmail');
 const brandSettingsRepo = require('../dal/BrandSettingsRepository');
+const { getUnsubscribeUrl } = require('../services/trackingHelper');
+const unsubscribeRepo = require('../dal/UnsubscribeRepository');
 
 // ── Brand Settings ──
 router.get('/brand-settings', (req, res) => {
@@ -37,7 +39,8 @@ router.post('/send', async (req, res, next) => {
       return res.status(400).json({ error: 'to, subject, and html are required' });
     }
     const emailLogId = uuidv4();
-    let trackedHtml = wrapAllLinks(html, emailLogId);
+    let processedHtml = html.replace(/\{\{unsubscribe_url\}\}/g, getUnsubscribeUrl(to));
+    let trackedHtml = wrapAllLinks(processedHtml, emailLogId);
     trackedHtml = injectTracking(trackedHtml, emailLogId);
 
     const result = await emailService.sendEmail({ to, subject, html: trackedHtml, text });
@@ -66,7 +69,8 @@ router.post('/send-bulk', async (req, res, next) => {
     for (const recipient of recipients) {
       const to = typeof recipient === 'string' ? recipient : recipient.email;
       const emailLogId = uuidv4();
-      let trackedHtml = wrapAllLinks(html, emailLogId);
+      let processedHtml = html.replace(/\{\{unsubscribe_url\}\}/g, getUnsubscribeUrl(to));
+      let trackedHtml = wrapAllLinks(processedHtml, emailLogId);
       trackedHtml = injectTracking(trackedHtml, emailLogId);
       try {
         await emailService.sendEmail({ to, subject, html: trackedHtml, text });
@@ -158,6 +162,11 @@ router.post('/logs/scan-bounces', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ── Unsubscribes ──
+router.get('/unsubscribes', (req, res) => {
+  res.json(unsubscribeRepo.getAll());
 });
 
 // ── Templates CRUD ──

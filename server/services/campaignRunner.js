@@ -5,6 +5,8 @@ const emailLogRepo = require('../dal/EmailLogRepository');
 const emailService = require('./emailService');
 const UserRepository = require('../dal/UserRepository');
 const { wrapInBrandedTemplate, buildCtaButton, injectTracking, wrapAllLinks } = require('../templates/brandedEmail');
+const unsubscribeRepo = require('../dal/UnsubscribeRepository');
+const { getUnsubscribeUrl } = require('./trackingHelper');
 
 const userRepo = new UserRepository();
 
@@ -46,7 +48,10 @@ async function resolveRecipients(campaign) {
 }
 
 async function executeCampaign(campaign) {
-  const recipients = await resolveRecipients(campaign);
+  const allRecipients = await resolveRecipients(campaign);
+  // Filter out unsubscribed emails
+  const unsubscribedEmails = new Set(unsubscribeRepo.getUnsubscribedEmails());
+  const recipients = allRecipients.filter(r => !unsubscribedEmails.has((r.email || '').toLowerCase()));
   if (recipients.length === 0) return { sent: 0, failed: 0, results: [] };
 
   // Append CTA button if configured
@@ -63,6 +68,8 @@ async function executeCampaign(campaign) {
     const recipientName = recipient.name || recipient.firstName || '';
     // Replace {{name}} with recipient's actual name
     let personalizedHtml = brandedHtml.replace(/\{\{name\}\}/g, recipientName);
+    // Replace {{unsubscribe_url}} with actual unsubscribe link
+    personalizedHtml = personalizedHtml.replace(/\{\{unsubscribe_url\}\}/g, getUnsubscribeUrl(to));
 
     // Generate tracking ID upfront (no file write — avoids nodemon restart)
     const emailLogId = uuidv4();

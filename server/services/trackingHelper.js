@@ -26,11 +26,15 @@ function wrapAllLinks(html, emailLogId) {
   const trackingPattern = `${TRACKING_PATH}/`;
   return html.replace(/href="(https?:\/\/[^"]+)"/g, (match, url) => {
     // Skip unsubscribe and tracking URLs
-    if (url.includes('{{unsubscribe_url}}') || url.includes(trackingPattern)) {
+    if (url.includes('{{unsubscribe_url}}') || url.includes('/unsubscribe?') || url.includes(trackingPattern)) {
       return match;
     }
     return `href="${wrapUrlForTracking(url, emailLogId)}"`;
   });
+}
+
+function getUnsubscribeUrl(email) {
+  return `${BASE_URL}${TRACKING_PATH}/unsubscribe?email=${encodeURIComponent(email || '')}`;
 }
 
 module.exports = {
@@ -38,4 +42,5 @@ module.exports = {
   wrapUrlForTracking,
   injectTrackingPixel,
   wrapAllLinks,
+  getUnsubscribeUrl,
 };

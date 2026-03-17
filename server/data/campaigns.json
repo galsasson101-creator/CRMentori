@@ -22,5 +22,31 @@
     "ctaText": "",
     "recipientDateFrom": "2025-09-01",
     "recipientDateTo": "2026-03-10"
+  },
+  {
+    "id": "81299646-6e89-4889-8581-f06bd9118214",
+    "name": "cshev",
+    "subject": "info@menrtori.app",
+    "htmlBody": "<p>jhvvj nkl j j fg </p>",
+    "ctaText": "",
+    "ctaUrl": "",
+    "recipientMode": "manual",
+    "recipientFilter": "all",
+    "recipientTier": "",
+    "recipientStatus": "",
+    "recipientDateFrom": "",
+    "recipientDateTo": "",
+    "recipientEmails": [],
+    "recipientIds": [
+      "698c79156c4b8942eca356c2"
+    ],
+    "scheduleType": "now",
+    "cronExpression": "",
+    "status": "completed",
+    "enabled": true,
+    "totalSent": 5,
+    "createdAt": "2026-03-17T13:10:36.689Z",
+    "updatedAt": "2026-03-17T13:53:39.144Z",
+    "lastRun": "2026-03-17T13:53:39.144Z"
   }
 ]
