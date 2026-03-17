@@ -1,5 +1,6 @@
 const { sendEmail } = require('./emailService');
 const emailLogRepo = require('../dal/EmailLogRepository');
+const { getUnsubscribeUrl } = require('./trackingHelper');
 
 const FONT_STACK = "'Heebo','Arial Hebrew','Tahoma',Arial,sans-serif";
 
@@ -352,7 +353,7 @@ function buildWelcomeHtml(userName, settings) {
 
               <!-- Links -->
               <p style="margin:0;font-size:12px;font-family:${FONT_STACK};">
-                <a href="{{unsubscribe_url}}" style="color:rgba(255,255,255,0.5);text-decoration:underline;">הסרה מרשימת תפוצה</a>
+                <a href="${getUnsubscribeUrl()}" style="color:rgba(255,255,255,0.5);text-decoration:underline;">הסרה מרשימת תפוצה</a>
                 <span style="color:rgba(255,255,255,0.3);"> &bull; </span>
                 <a href="${websiteUrl}" style="color:rgba(255,255,255,0.5);text-decoration:underline;">${websiteUrl.replace(/^https?:\/\//, '')}</a>
               </p>

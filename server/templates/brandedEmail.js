@@ -6,6 +6,7 @@
 
 const brandSettingsRepo = require('../dal/BrandSettingsRepository');
 const trackingHelper = require('../services/trackingHelper');
+const { getUnsubscribeUrl } = require('../services/trackingHelper');
 
 const FONT_STACK = "'Heebo','Arial Hebrew','Tahoma',Arial,sans-serif";
 
@@ -286,7 +287,7 @@ function wrapInBrandedTemplate(contentHtml, settings = null) {
                 <tr>
                   <td style="padding:0 32px 24px 32px;text-align:center;">
                     <p style="margin:0;font-size:12px;color:${s.mutedTextColor};font-family:${FONT_STACK};direction:rtl;">
-                      <a href="{{unsubscribe_url}}" style="color:${s.primaryColor};text-decoration:underline;">הסרה מרשימת תפוצה</a>
+                      <a href="${getUnsubscribeUrl()}" style="color:${s.primaryColor};text-decoration:underline;">הסרה מרשימת תפוצה</a>
                       &nbsp;&bull;&nbsp;
                       <a href="${websiteUrl}" style="color:${s.primaryColor};text-decoration:underline;">${websiteDisplay}</a>
                     </p>
