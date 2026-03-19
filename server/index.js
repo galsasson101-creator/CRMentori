@@ -16,12 +16,14 @@ const emailsRouter = require('./routes/emails');
 const trackingRouter = require('./routes/tracking');
 const { initScheduledCampaigns } = require('./services/campaignRunner');
 
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(logger);
 
 // Routes
