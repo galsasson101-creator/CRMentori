@@ -24,18 +24,18 @@
     "recipientDateTo": "2026-03-10"
   },
   {
-    "id": "81299646-6e89-4889-8581-f06bd9118214",
-    "name": "cshev",
-    "subject": "info@menrtori.app",
-    "htmlBody": "<p>jhvvj nkl j j fg </p>",
+    "id": "bcf10d07-cf03-4490-b436-8c8fcf6f0ebe",
+    "name": "מייל עם קישור עובד -  מנטורי בשקל",
+    "subject": "info@mentori.app",
+    "htmlBody": "<h3>שלום {{name}}, יש לנו משהו בשבילך :)</h3><p>התקופה האחרונה קצת מורכבת ואיתה גם הלימודים לא הופכים <strong>לקלים יותר.</strong></p><p>צוות המורים של מנטורי לא רוצים להישאר אדישים, לכן החלטנו לתת גישה מלאה למנטורי</p><ul><li><p><strong>מורה פרטי מאומן על הבגרויות</strong></p></li><li><p><strong>ספריית סרטוני לימוד וסיכומים</strong></p></li><li><p><strong>תרגולים עם פידבק מלא</strong></p></li></ul><p>וזה רק על קצה המזג !</p><p>-</p><h1><strong>וכל זה ב1 ש\"ח לחודש,</strong> כדי שתוכלו לאפשר לעצמכם ללמוד מהבית בצורה איכותית !</h1><p>-</p><h3><strong>ההטבה היא אישית ולמי שקיבל את המייל הזה<br></strong></h3><h2><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://mentori.app/free-trial\"><strong>למימוש ההטבה שלי</strong></a></h2><h3><strong><br></strong></h3><p>ההטבה תחול אך ורק בכניסה לאתר \\ אפליקציה מהקישור פה למעלה :)</p><p>שיהיה בהצלחה, וזמינים פה לכל שאלה, ובקשה.</p><p><strong>צוות Mentori</strong></p>",
     "ctaText": "",
-    "ctaUrl": "",
+    "ctaUrl": "http://mentori.app/free-trial",
     "recipientMode": "manual",
-    "recipientFilter": "all",
+    "recipientFilter": "status",
     "recipientTier": "",
-    "recipientStatus": "",
-    "recipientDateFrom": "",
-    "recipientDateTo": "",
+    "recipientStatus": "free",
+    "recipientDateFrom": "2026-03-11",
+    "recipientDateTo": "2026-03-18",
     "recipientEmails": [],
     "recipientIds": [
       "698c79156c4b8942eca356c2"
@@ -44,9 +44,9 @@
     "cronExpression": "",
     "status": "completed",
     "enabled": true,
-    "totalSent": 5,
-    "createdAt": "2026-03-17T13:10:36.689Z",
-    "updatedAt": "2026-03-17T13:53:39.144Z",
-    "lastRun": "2026-03-17T13:53:39.144Z"
+    "totalSent": 3,
+    "createdAt": "2026-03-18T12:38:33.498Z",
+    "updatedAt": "2026-03-19T09:06:37.541Z",
+    "lastRun": "2026-03-19T09:06:37.541Z"
   }
 ]

@@ -47,6 +47,12 @@ async function sendEmail({ to, subject, html, text }) {
         contentType: html ? 'HTML' : 'Text',
         content: html || text || subject,
       },
+      from: {
+        emailAddress: {
+          name: 'צוות מנטורי',
+          address: sender,
+        },
+      },
       toRecipients: [
         { emailAddress: { address: to } },
       ],
